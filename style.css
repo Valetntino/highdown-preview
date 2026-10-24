@@ -115,6 +115,9 @@ h1 { font: 300 clamp(46px, 7.2vw, 96px)/1 var(--serif); letter-spacing: -.01em; 
 .intro { display: grid; gap: 56px; }
 .lede { font: 400 clamp(25px, 2.1vw, 30px)/1.4 var(--serif); letter-spacing: 0; margin: 0 0 30px; max-width: 34ch; }
 .facts { max-width: 46ch; color: var(--ink); }
+.facts-list { list-style: none; padding: 0; margin: 1.25rem 0 0; max-width: 46ch; color: var(--ink); }
+.facts-list li { padding: .45rem 0; border-top: 1px solid var(--rule); }
+.facts-list li:last-child { border-bottom: 1px solid var(--rule); }
 .intro-draw { width: 120px; margin-top: 36px; }
 .collage { position: relative; }
 .collage .c1 img { aspect-ratio: 4 / 5; object-fit: cover; }
