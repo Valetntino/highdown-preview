@@ -1,0 +1,223 @@
+{
+ "facts": {
+  "name": "Elderflower Lodge",
+  "brand": "Highdown Hideaways",
+  "hosts": "Luca and Trina",
+  "sleeps": 6,
+  "bedrooms": 3,
+  "bathrooms": 2,
+  "beds": "Two king-size bedrooms and a twin room",
+  "hot_tub_included": "yes",
+  "hot_tub": "Private to the lodge, under its own covered gazebo, included in the price",
+  "checkin": "3pm",
+  "checkout": "10am",
+  "pets_allowed": "no",
+  "pets": "No pets. Ask about assistance animals before booking.",
+  "beach_drive_min": "5 to 8",
+  "beach_walk": "25 to 35 minutes along the Ferring Rife",
+  "airbnb_rating": "5.0",
+  "airbnb_reviews": 331,
+  "airbnb_badges": "Superhost and Guest favourite",
+  "one_level": "yes",
+  "front_steps": 2,
+  "parking": "2 cars at the lodge, more on the nursery",
+  "phone": "07940 796860",
+  "tel": "+447940796860",
+  "email": "info@highdownhideaways.com",
+  "address": "Foschini Nursery, Hangleton Lane, Ferring, West Sussex BN12 6PP",
+  "postcode": "BN12 6PP",
+  "lat": 50.8224,
+  "lon": -0.4563,
+  "airbnb_url": "https://www.airbnb.co.uk/rooms/49257209",
+  "facebook": "https://www.facebook.com/highdownhideaways",
+  "instagram": "https://www.instagram.com/highdownhideaways",
+  "airbnb_reviews_at": "23 October 2026"
+ },
+ "facts_checked": "26 September 2026",
+ "built": "2026-10-24T04:38:52.667695+01:00",
+ "answers": [
+  {
+   "q": "What is provided?",
+   "a": "Bedding, towels, bathrobes, beach towels, toiletries, Wi-Fi, a full kitchen with coffee pods, and a welcome hamper with eggs from our hens and produce in season."
+  },
+  {
+   "q": "Is there parking?",
+   "a": "Yes, free: 2 cars at the lodge, with more space on the nursery."
+  },
+  {
+   "q": "Is there Wi-Fi and TV?",
+   "a": "Fast Wi-Fi throughout. A 50-inch smart TV in the lounge (Netflix, Disney+, Prime Video) and a 40-inch smart TV in every bedroom."
+  },
+  {
+   "q": "Is it step-free?",
+   "a": "Inside is all on one level, with a large wet room and widened doorways. There are 2 steps to the front door; we put a ramp down on request."
+  },
+  {
+   "q": "Is there air conditioning?",
+   "a": "Not yet. Fans are provided for hot nights."
+  },
+  {
+   "q": "How do we get there without a car?",
+   "a": "Goring-by-Sea station is 1.5 miles away (about 28 minutes on foot); Angmering station is 1.9 miles."
+  },
+  {
+   "q": "How many people does it sleep?",
+   "a": "Up to 6, in two king-size bedrooms and a twin room. A travel cot and highchair are free on request."
+  },
+  {
+   "q": "Is the hot tub private? Does it cost extra?",
+   "a": "It is private to the lodge, under its own covered gazebo in your garden, and included in the price. You can use it in the rain."
+  },
+  {
+   "q": "Check-in and check-out?",
+   "a": "Check-in from 3pm, check-out by 10am. Self check-in with a lockbox. Ask us if you need other times."
+  },
+  {
+   "q": "Can we bring a dog?",
+   "a": "No pets. Ask us about assistance animals before booking."
+  },
+  {
+   "q": "How far is the beach?",
+   "a": "5 to 8 minutes by car, or 25 to 35 minutes on foot along the Ferring Rife."
+  },
+  {
+   "q": "How do we book?",
+   "a": "Choose dates and book on Airbnb, or book direct with us: ring or text 07940 796860, or email info@highdownhideaways.com."
+  },
+  {
+   "q": "Parties or smoking?",
+   "a": "No parties, events or smoking."
+  }
+ ],
+ "rooms": [
+  {
+   "room": "Bedroom 1",
+   "beds": "King-size bed",
+   "notes": "En-suite wet room"
+  },
+  {
+   "room": "Bedroom 2",
+   "beds": "King-size bed",
+   "notes": ""
+  },
+  {
+   "room": "Bedroom 3",
+   "beds": "Two single beds, joined on request",
+   "notes": ""
+  },
+  {
+   "room": "Main bathroom",
+   "beds": "Bath and rainfall shower",
+   "notes": "For bedrooms 2 and 3"
+  },
+  {
+   "room": "Open-plan living",
+   "beds": "Kitchen, dining for 6 and lounge under skylights",
+   "notes": "Utility room with washer and dryer"
+  }
+ ],
+ "distances": [
+  {
+   "place": "South Downs National Park",
+   "walk": "6 min",
+   "drive": ""
+  },
+  {
+   "place": "Asda supermarket",
+   "walk": "10 min",
+   "drive": ""
+  },
+  {
+   "place": "Ferring village, shops and the Henty Arms pub",
+   "walk": "16 min",
+   "drive": ""
+  },
+  {
+   "place": "Highdown Hill (National Trust)",
+   "walk": "16 min",
+   "drive": ""
+  },
+  {
+   "place": "Highdown Gardens",
+   "walk": "24 min",
+   "drive": "5 min"
+  },
+  {
+   "place": "Goring-by-Sea station",
+   "walk": "28 min",
+   "drive": ""
+  },
+  {
+   "place": "Ferring beach",
+   "walk": "25 to 35 min",
+   "drive": "5 to 8 min"
+  },
+  {
+   "place": "Worthing pier and town",
+   "walk": "",
+   "drive": "15 min"
+  },
+  {
+   "place": "Littlehampton seafront",
+   "walk": "",
+   "drive": "15 min"
+  },
+  {
+   "place": "Arundel Castle",
+   "walk": "",
+   "drive": "20 min"
+  },
+  {
+   "place": "Chichester",
+   "walk": "",
+   "drive": "35 min"
+  },
+  {
+   "place": "Brighton",
+   "walk": "",
+   "drive": "40 min"
+  },
+  {
+   "place": "Goodwood",
+   "walk": "",
+   "drive": "45 min"
+  },
+  {
+   "place": "Gatwick Airport",
+   "walk": "",
+   "drive": "1 hour"
+  }
+ ],
+ "reviews": [
+  {
+   "name": "Jeremy",
+   "date": "January 2026",
+   "text": "This lodge is fantastic! do not hesitate to book. It is actually better than the photos. we stayed five nights but could easily have moved in permanently. Easily the best equipped Air BnB that we have stayed in, and the covered hotub makes it useable in all weathers. Also the surrounding area is lovely and peaceful, with great beach walks close by. Thanks Luca & Trina, we had a wonderful stay and the welcome basket was amazing!!!"
+  },
+  {
+   "name": "Carol",
+   "date": "August 2026",
+   "text": "Our stay at the Lodge was a great family experience. Everything that we needed was there, with a very well equipped kitchen. \nDelightful areas outside, which we enjoyed in the warm evenings.\nThe hot tub was popular with all six of us!\nWonderful welcome hamper - particularly loved the organic vegetables, local apple juice and bread.\nMany thanks Luca and Trina."
+  },
+  {
+   "name": "Kathryn",
+   "date": "July 2026",
+   "text": "We had a wonderful stay at Elderflower Lodge and couldn't have asked for a better place for our family reunion and long weekend at the Goodwood Festival of Speed.\nMy sister and brother-in-law travelled all the way from North Carolina to join us, so finding somewhere special was really important, and this property met all our expectations. The lodge was spotlessly clean, beautifully presented, and had everything we needed.\nThe outdoor space was the highlight for us. We spent sunny evenings relaxing in the garden and hot tub after long days at Goodwood.\nThe location was perfect—peaceful and quiet, yet within walking distance of the village and beach.\nA special mention to Luca and Trina, whose communication was exceptional from start to finish. They were friendly, helpful and responsive, making everything completely stress-free.\nWe wouldn't hesitate to recommend Elderflower Lodge and hope to return one day. Thank you, Luca and Trina, for helping make our family weekend so memorable!"
+  },
+  {
+   "name": "Lucy",
+   "date": "August 2026",
+   "text": "Just wow! Place was incredible. Gorgeous decor, everything you needed and more. Comfortable… home from home. Trina & Luca were super friendly and we received some fresh vegetables which were very tasty. Would definitely return and highly recommend."
+  },
+  {
+   "name": "Roberta",
+   "date": "July 2026",
+   "text": "We booked for a special birthday celebration. Luca and Trina left us a lovely  message with their very generous welcome goodies. The lodge was immaculate and had everything we needed. The hot tub was easy to use and set in the peaceful surroundings was very relaxing. All four of us had a really great long weekend. Thank you Luca and Trina"
+  },
+  {
+   "name": "Helen",
+   "date": "June 2025",
+   "text": "We stayed at Luca and Trina’s place for my mum’s 70th birthday weekend away. The lodge itself is spacious and beautifully designed. We were impressed with how well equipped the kitchen was with pretty much everything you would need to cook and host. \nMy niece and nephew loved the spacious garden and of course the hot tub was also a massive bonus!  \nWould highly recommend to anyone considering booking."
+  }
+ ]
+}

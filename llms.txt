@@ -1,0 +1,6 @@
+# Highdown Hideaways: Elderflower Lodge
+
+> A private 3-bedroom lodge for 6 with its own covered hot tub, at the foot of the South Downs in Ferring, West Sussex. Book on Airbnb or direct by phone.
+
+- [Every fact in plain text](index.md)
+- [Exact facts as JSON](index.json)
