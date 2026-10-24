@@ -12,7 +12,7 @@
 @font-face { font-family: "Jost"; font-weight: 500; font-display: swap; src: url(fonts/jost-latin-500-normal.woff2) format("woff2"); }
 
 :root {
-  --ground: #EDE8E0; --ground-2: #E3DCD1; --ink: #26231F; --muted: #6B645B; --rule: #CFC6B8; --accent: #6E2C3C;
+  --ground: #EDE8E0; --ground-2: #E3DCD1; --ink: #26231F; --muted: #625B52; --rule: #CFC6B8; --accent: #6E2C3C;
   --serif: "Cormorant Garamond", "Cormorant", Garamond, "Times New Roman", serif;
   --sans: "Jost", "Futura", "Century Gothic", system-ui, sans-serif;
   --g: clamp(20px, 5vw, 72px);          /* side gutter */
@@ -91,6 +91,7 @@ h1 { font: 300 clamp(46px, 7.2vw, 96px)/1 var(--serif); letter-spacing: -.01em; 
   -webkit-appearance: none; appearance: none; cursor: pointer; }
 .book input:focus-visible, .book select:focus-visible { outline: none; }
 .book .f:focus-within { border-bottom-color: var(--accent); }
+.book .f:has(:focus-visible) { outline: 1px solid var(--ink); outline-offset: 3px; }  /* the date inputs are see-through, so the ring goes on their label (keyboard check, 24 Oct) */
 .book select { padding-right: 16px; background: linear-gradient(45deg, transparent 50%, var(--muted) 50%) right 5px center / 5px 5px no-repeat,
   linear-gradient(-45deg, transparent 50%, var(--muted) 50%) right 0 center / 5px 5px no-repeat; }
 .when { position: relative; display: block; }
@@ -100,7 +101,8 @@ h1 { font: 300 clamp(46px, 7.2vw, 96px)/1 var(--serif); letter-spacing: -.01em; 
 .js .when .shown.empty { color: var(--muted); }
 .js .when input { color: transparent; }
 .js .when input::-webkit-datetime-edit { opacity: 0; }
-.js .when input::-webkit-calendar-picker-indicator { position: absolute; inset: 0; width: auto; height: auto; opacity: 0; cursor: pointer; }
+.js .when input::-webkit-calendar-picker-indicator { display: none; }  /* site.js opens the calendar on click, Enter or Space; the hidden button was an unseen extra Tab stop (24 Oct) */
+.js .when input { cursor: pointer; }
 .stay-note { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 6px 32px; color: var(--muted); font-size: 13px; }
 .stay-note p { margin: 0; }
 .rating span:first-child { color: var(--ink); }
