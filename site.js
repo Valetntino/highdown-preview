@@ -14,52 +14,185 @@
     new IntersectionObserver(function (es) { bar.classList.toggle('away', es[0].isIntersecting); }).observe(book);
   }
 })();
-// Date helpers for the Airbnb hand-off. The form works without this file; this only stops impossible dates,
-// shows dates in words ('Fri 13 Nov') over the native input, and leaves empty fields out of the Airbnb link.
+// Date picker: a calendar in the site's own type and colours, in place of the phone's built-in one, which the user
+// called ugly (25 Oct 2026, K0286). Tap the arrival day, then the leaving day: two months side by side on wide
+// screens, one month in a sheet from the bottom on phones. Past days can't be chosen, nor stays under the minimum,
+// nor (once src/nights.json is held) booked nights. The hidden date inputs still hold the values, so the form and the
+// quote read them as before, and the page works without this file.
 (function () {
   var ci = document.getElementById('ci'), co = document.getElementById('co'), form = document.getElementById('book');
   if (!ci || !co || !form) return;
-  function iso(d) { return d.toISOString().slice(0, 10); }
-  function show(el) {
-    var s = el.parentNode.querySelector('.shown');
-    if (!s) return;
-    if (!el.value) { s.textContent = 'Add date'; s.classList.add('empty'); return; }
-    var p = el.value.split('-'), d = new Date(+p[0], +p[1] - 1, +p[2]);
-    s.textContent = d.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' });
-    s.classList.remove('empty');
+  var P = null, N = null;
+  try { P = JSON.parse(document.getElementById('pricing').textContent); } catch (err) { P = null; }
+  try { N = JSON.parse(document.getElementById('nights').textContent); } catch (err) { N = null; }
+  var DAY = 864e5, now = new Date(), today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  var SHORT = { weekday: 'short', day: 'numeric', month: 'short' }, LONG = { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' };
+  var wide = window.matchMedia('(min-width: 700px)');
+  function iso(d) { return d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2) + '-' + ('0' + d.getDate()).slice(-2); }
+  function day(v) { var p = v.split('-'); return new Date(+p[0], +p[1] - 1, +p[2]); }
+  function add(d, n) { return new Date(d.getFullYear(), d.getMonth(), d.getDate() + n); }
+  function month(d, n) { return new Date(d.getFullYear(), d.getMonth() + (n || 0), 1); }
+  function nights(a, b) { return Math.round((b - a) / DAY); }
+  function fmt(d, o) { return d.toLocaleDateString('en-GB', o); }
+  // the fewest nights a stay arriving on a may have (src/pricing.json): 2 for arrivals soon, else min_nights
+  function least(a) { return P ? (nights(today, a) <= P.two_night_within_days ? 2 : P.min_nights) : 1; }
+  function booked(d) { var x = N && N.nights[iso(d)]; return !!(x && !x.open); }
+  function fits(a, b) {
+    if (nights(a, b) < least(a)) return 'short';
+    for (var x = a; x < b; x = add(x, 1)) if (booked(x)) return 'booked';
+    return '';
   }
-  function pick(el) { try { el.showPicker(); } catch (err) { /* older browsers: the native control still works */ } }
-  var today = new Date(); ci.min = iso(today);
-  ci.addEventListener('change', function () {
-    if (!ci.value) return;
-    var next = new Date(ci.value); next.setDate(next.getDate() + 1);
-    co.min = iso(next);
-    if (!co.value || co.value <= ci.value) co.value = iso(next);
-    show(co);
+
+  var start = ci.value ? day(ci.value) : null, end = co.value ? day(co.value) : null;
+  var picking = 'in', hover = null, view = month(today), last = month(today, 24);
+
+  // the shown date becomes the button that opens the calendar; the native input is left only to hold the value
+  var trig = [ci, co].map(function (el, k) {
+    var s = el.parentNode.querySelector('.shown'), b = document.createElement('button');
+    b.type = 'button'; b.className = s.className; b.setAttribute('aria-haspopup', 'dialog'); b.setAttribute('aria-expanded', 'false');
+    s.parentNode.replaceChild(b, s);
+    el.tabIndex = -1; el.setAttribute('aria-hidden', 'true');
+    el.closest('.f').addEventListener('click', function (ev) { ev.preventDefault(); open(k ? 'out' : 'in'); });
+    return b;
   });
-  [ci, co].forEach(function (el) {
-    el.addEventListener('input', function () { show(el); });
-    el.addEventListener('change', function () { show(el); });
-    el.addEventListener('click', function () { pick(el); });
-    el.addEventListener('keydown', function (ev) {
-      if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); pick(el); }
+  function label(k) {
+    var el = k ? co : ci, b = trig[k], v = el.value;
+    b.textContent = v ? fmt(day(v), SHORT) : 'Add date';
+    b.classList.toggle('empty', !v);
+    b.setAttribute('aria-label', (k ? 'Leave' : 'Arrive') + ': ' + (v ? fmt(day(v), LONG) : 'choose a date'));
+  }
+
+  var cal = document.createElement('div'), back = document.createElement('div');
+  cal.className = 'cal'; cal.hidden = true; cal.setAttribute('role', 'dialog'); cal.setAttribute('aria-label', 'Choose your dates');
+  back.className = 'cal-back'; back.hidden = true;
+  cal.innerHTML = '<div class="cal-top"><p class="cal-say" aria-live="polite"></p><button type="button" class="cal-x">Close</button></div>' +
+    '<div class="cal-nav"><button type="button" class="cal-prev" aria-label="Earlier month">&#8592;</button>' +
+    '<button type="button" class="cal-next" aria-label="Later month">&#8594;</button></div>' +
+    '<div class="cal-months"></div>' +
+    '<div class="cal-foot"><button type="button" class="cal-clear">Clear dates</button><p class="cal-rule"></p></div>';
+  form.appendChild(cal); document.body.appendChild(back);
+  var months = cal.querySelector('.cal-months'), say = cal.querySelector('.cal-say');
+  if (P) cal.querySelector('.cal-rule').textContent = 'Stays of ' + P.min_nights + ' nights or more, or 2 nights for arrivals in the next ' +
+    Math.round(P.two_night_within_days / 7) + ' weeks.';
+
+  // why day d can't be chosen now ('past', 'short', 'booked'), or ''
+  function why(d) {
+    if (d < today) return 'past';
+    if (picking === 'out' && start && d > start) return fits(start, d);
+    return booked(d) ? 'booked' : '';
+  }
+  function render() {
+    var html = '', count = wide.matches ? 2 : 1;
+    for (var m = 0; m < count; m++) {
+      var first = month(view, m), dim = new Date(first.getFullYear(), first.getMonth() + 1, 0).getDate();
+      html += '<div class="cal-month"><p class="cal-name">' + fmt(first, { month: 'long', year: 'numeric' }) + '</p><div class="cal-days">' +
+        '<span aria-hidden="true">Mo</span><span aria-hidden="true">Tu</span><span aria-hidden="true">We</span><span aria-hidden="true">Th</span>' +
+        '<span aria-hidden="true">Fr</span><span aria-hidden="true">Sa</span><span aria-hidden="true">Su</span>';
+      for (var i = (first.getDay() + 6) % 7; i > 0; i--) html += '<span></span>';
+      for (var dd = 1; dd <= dim; dd++) html += '<button type="button" data-d="' + iso(new Date(first.getFullYear(), first.getMonth(), dd)) + '">' + dd + '</button>';
+      html += '</div></div>';
+    }
+    months.innerHTML = html;
+    cal.querySelector('.cal-prev').disabled = view <= month(today);
+    cal.querySelector('.cal-next').disabled = month(view, count - 1) >= last;
+    paint();
+  }
+  function paint() {
+    var to = end || (picking === 'out' && start && hover && hover > start && !why(hover) ? hover : null), aim = target();
+    months.querySelectorAll('button').forEach(function (b) {
+      var d = day(b.dataset.d), no = why(d), s = !!(start && +d === +start), e = !!(to && +d === +to);
+      b.className = (no ? 'no ' + no : '') + (s ? ' s' : '') + (e ? ' e' : '') + (start && to && d > start && d < to ? ' in' : '') +
+        (+d === +today ? ' now' : '');
+      b.setAttribute('aria-disabled', no ? 'true' : 'false');
+      b.setAttribute('aria-pressed', s || (e && end) ? 'true' : 'false');
+      b.setAttribute('aria-label', fmt(d, LONG) + (s ? ', arrival' : e && end ? ', leaving' : '') +
+        (no === 'booked' ? ', booked' : no === 'short' ? ', too short a stay' : ''));
+      b.tabIndex = +d === +aim ? 0 : -1;
     });
-    show(el);
+    say.textContent = start && end ? nights(start, end) + ' nights, ' + fmt(start, SHORT) + ' to ' + fmt(end, SHORT) :
+      start ? 'Arriving ' + fmt(start, SHORT) + '. Now choose the day you leave.' : 'Choose the day you arrive.';
+  }
+  // the day keyboard focus starts on: the date being chosen, or the first open day on show
+  function target() {
+    var d = picking === 'out' && start ? (end || add(start, least(start))) : (start || today);
+    var lo = month(view) < today ? today : month(view), hi = add(month(view, wide.matches ? 2 : 1), -1);
+    return d < lo || d > hi ? lo : d;
+  }
+  function sync() {
+    ci.value = start ? iso(start) : ''; co.value = end ? iso(end) : '';
+    [ci, co].forEach(function (el, k) { label(k); el.dispatchEvent(new Event('change', { bubbles: true })); });
+  }
+  function choose(d) {
+    if (why(d)) return;
+    if (picking === 'out' && start && d > start) end = d;
+    else { start = d; if (end && (end <= d || fits(d, end))) end = null; }
+    picking = end ? 'in' : 'out'; hover = null;
+    sync();
+    if (!end) { paint(); return; }
+    close(true);
+    var q = document.getElementById('quote');  // bring the price for these dates into view
+    if (q && !q.hidden) q.scrollIntoView({ block: 'nearest' });
+  }
+  function open(mode) {
+    picking = mode === 'out' && start ? 'out' : 'in';
+    view = month(start && start > today ? start : today);
+    cal.hidden = false; back.hidden = wide.matches;
+    document.documentElement.classList.toggle('cal-lock', !wide.matches);
+    trig.forEach(function (b) { b.setAttribute('aria-expanded', 'true'); });
+    render();
+    var b = months.querySelector('button[tabindex="0"]'); if (b) b.focus({ preventScroll: wide.matches });
+  }
+  function close(refocus) {
+    if (cal.hidden) return;
+    cal.hidden = true; back.hidden = true; hover = null;
+    document.documentElement.classList.remove('cal-lock');
+    trig.forEach(function (b) { b.setAttribute('aria-expanded', 'false'); });
+    if (refocus) trig[end ? 1 : 0].focus({ preventScroll: true });
+  }
+  function go(d) {
+    if (d < today || d >= month(last, 1)) return;
+    var count = wide.matches ? 2 : 1;
+    if (d < month(view)) { view = month(d); render(); }
+    else if (d >= month(view, count)) { view = month(d, 1 - count); render(); }
+    var b = months.querySelector('button[data-d="' + iso(d) + '"]');
+    if (b) { months.querySelectorAll('button').forEach(function (x) { x.tabIndex = x === b ? 0 : -1; }); b.focus(); }
+  }
+
+  months.addEventListener('click', function (ev) { var b = ev.target.closest('button'); if (b) choose(day(b.dataset.d)); });
+  months.addEventListener('mouseover', function (ev) {
+    var b = ev.target.closest('button'); if (!b || picking !== 'out') return;
+    hover = day(b.dataset.d); paint();
   });
-  var ad = document.getElementById('ad'), gu = document.getElementById('gu');
-  form.addEventListener('submit', function () {
-    if (ad && gu) gu.value = ad.value;  // the hand-off URL that kept dates and party size on 23 Oct 2026 carried both adults= and guests=
-    [ci, co].forEach(function (el) { if (!el.value) el.disabled = true; });
-    setTimeout(function () { ci.disabled = false; co.disabled = false; }, 0);
+  months.addEventListener('mouseleave', function () { if (hover) { hover = null; paint(); } });
+  months.addEventListener('keydown', function (ev) {
+    var b = ev.target.closest('button'); if (!b) return;
+    var d = day(b.dataset.d), step = { ArrowLeft: -1, ArrowRight: 1, ArrowUp: -7, ArrowDown: 7 }[ev.key];
+    if (step) { ev.preventDefault(); go(add(d, step)); }
+    else if (ev.key === 'PageUp' || ev.key === 'PageDown') {
+      ev.preventDefault(); go(new Date(d.getFullYear(), d.getMonth() + (ev.key === 'PageUp' ? -1 : 1), d.getDate()));
+    }
   });
+  cal.querySelector('.cal-prev').addEventListener('click', function () { view = month(view, -1); render(); });
+  cal.querySelector('.cal-next').addEventListener('click', function () { view = month(view, 1); render(); });
+  cal.querySelector('.cal-x').addEventListener('click', function () { close(true); });
+  cal.querySelector('.cal-clear').addEventListener('click', function () { start = end = null; picking = 'in'; sync(); render(); });
+  cal.addEventListener('keydown', function (ev) { if (ev.key === 'Escape') { ev.stopPropagation(); close(true); } });
+  back.addEventListener('click', function () { close(false); });
+  document.addEventListener('click', function (ev) {
+    if (!cal.hidden && !cal.contains(ev.target) && !ev.target.closest('.book .f')) close(false);
+  });
+  try { wide.addEventListener('change', function () { if (!cal.hidden) { back.hidden = wide.matches; document.documentElement.classList.toggle('cal-lock', !wide.matches); render(); } }); } catch (err) { /* old Safari */ }
+  label(0); label(1);
 })();
-// Direct price: the total for the dates typed in the booking bar, worked out from the settings in #pricing
-// (src/pricing.json; research/booking-v1/PLAN.md, 25 Oct 2026). The guest requests the dates by email; the owners
-// reply and agree them before anything is paid. Until show_everywhere is set, the quote shows only on the preview
-// link and local tests; elsewhere the "ask us for a price" email still carries the dates and party.
+// Direct price: the total for the chosen dates, worked out from the settings in #pricing (src/pricing.json;
+// research/booking-v1/PLAN.md, 25 Oct 2026). The booking button shows it here instead of sending guests to Airbnb
+// (user, K0286); the guest requests the dates by email, and the owners reply and agree them before anything is paid.
+// Airbnb stays one link away, with the same dates, for guests who want it. Without show_everywhere the price shows
+// only on the preview link and local tests, and elsewhere the box offers the email request alone.
 (function () {
   var ask = document.getElementById('ask'), ci = document.getElementById('ci'), co = document.getElementById('co'),
       ad = document.getElementById('ad'), box = document.getElementById('quote'), cfg = document.getElementById('pricing');
+  var form = document.getElementById('book'), air = form ? form.getAttribute('action') : '';
   if (!ask || !ci || !co || !ad) return;
   var P = null, N = null, nt = document.getElementById('nights');
   try { P = JSON.parse(cfg.textContent); } catch (err) { P = null; }
@@ -118,15 +251,16 @@
   }
 
   var parts = {};
-  if (show) {
+  if (box) {
     box.innerHTML = '<p class="q-line"><b class="q-total"></b> <span class="q-what"></span></p>' +
       '<p class="q-msg"></p>' +
-      '<label class="q-dog"><input type="checkbox" id="dog"> Bringing your dog <span class="q-fee"></span></label>' +
-      '<p class="q-act"><a class="btn" id="req" href="#">Request these dates</a></p>' +
-      '<p class="q-terms">Nothing is paid until we’ve spoken and agreed your dates. Then ' +
+      (show ? '<label class="q-dog"><input type="checkbox" id="dog"> Bringing your dog <span class="q-fee"></span></label>' : '') +
+      '<p class="q-act"><a class="btn" id="req" href="#"></a><a class="q-air" href="#" target="_blank" rel="noopener">Or see these dates on Airbnb</a></p>' +
+      '<p class="q-terms">Nothing is paid until we’ve spoken and agreed your dates.' + (show && P.terms_confirmed ? ' Then ' +
       Math.round(P.deposit_share * 100) + '% secures them and the rest is due ' + P.balance_days_before +
-      ' days before you arrive, with a ' + money(P.damage_deposit) + ' damage deposit we refund after your stay.</p>';
-    ['q-line', 'q-total', 'q-what', 'q-msg', 'q-dog', 'q-fee', 'q-act', 'q-terms'].forEach(function (c) { parts[c] = box.querySelector('.' + c); });
+      ' days before you arrive, with a ' + money(P.damage_deposit) + ' damage deposit we refund after your stay.' : '') + '</p>';
+    box.tabIndex = -1;
+    ['q-line', 'q-total', 'q-what', 'q-msg', 'q-dog', 'q-fee', 'q-air'].forEach(function (c) { parts[c] = box.querySelector('.' + c); });
     parts.dog = box.querySelector('#dog'); parts.req = box.querySelector('#req');
   }
 
@@ -134,21 +268,29 @@
     return base + '?subject=' + encodeURIComponent(subject) + '&body=' + encodeURIComponent(lines.join('\n'));
   }
   function update() {
-    var dog = show && parts.dog.checked, q = show ? quote(dog) : null;
+    var dog = !!(parts.dog && parts.dog.checked);
     var lines = ['Hello Luca and Trina,', '', 'Please could you give us a direct price for Elderflower Lodge.', '',
       'Arrive: ' + words(ci.value), 'Leave: ' + words(co.value), 'Guests: ' + ad.value, '', 'Thank you,', ''];
-    ask.setAttribute('href', mail('Elderflower Lodge: a direct price', lines));
-    if (!show) return;
-    box.hidden = !q;
-    if (!q) return;
-    var priced = q.total !== undefined;
-    parts['q-line'].hidden = parts['q-dog'].hidden = parts['q-act'].hidden = parts['q-terms'].hidden = !priced;
-    parts['q-msg'].hidden = priced;
-    if (!priced) { parts['q-msg'].textContent = q.msg; return; }
+    var asking = mail('Elderflower Lodge: a direct price', lines);
+    ask.setAttribute('href', asking);
+    if (!box) return;
+    box.hidden = !(ci.value && co.value);
+    if (box.hidden) return;
+    parts['q-air'].setAttribute('href', air + '?check_in=' + ci.value + '&check_out=' + co.value + '&adults=' + ad.value + '&guests=' + ad.value);
+    var q = show ? quote(dog) : null, priced = !!(q && q.total !== undefined);
+    parts['q-line'].hidden = !priced; parts['q-msg'].hidden = priced;
+    if (parts['q-dog']) parts['q-dog'].hidden = !priced;
+    if (!priced) {
+      parts['q-msg'].textContent = q && q.msg ? q.msg : 'Ask us for a price for these dates and we’ll reply by email.';
+      parts.req.textContent = 'Ask us about these dates';
+      parts.req.setAttribute('href', asking);
+      return;
+    }
     parts['q-total'].textContent = money(q.total);
     parts['q-what'].textContent = 'for ' + q.n + ' nights, booking direct with us' + (q.fee ? ', including your dog' : '') + '.';
     var month = q.from.getMonth() + 1;
     parts['q-fee'].textContent = '(+' + money(P.dog_fee.busy_months.indexOf(month) >= 0 ? P.dog_fee.busy : P.dog_fee.quiet) + ')';
+    parts.req.textContent = 'Request these dates';
     parts.req.setAttribute('href', mail('Elderflower Lodge: request for ' + short(q.from) + ' to ' + short(q.to), [
       'Hello Luca and Trina,', '', 'We’d like to stay at Elderflower Lodge, booking direct.', '',
       'Arrive: ' + words(ci.value), 'Leave: ' + words(co.value), 'Nights: ' + q.n, 'Guests: ' + ad.value,
@@ -156,7 +298,16 @@
       'Name:', 'Phone:', '', 'Thank you,', '']));
   }
   [ci, co, ad].forEach(function (el) { el.addEventListener('change', update); el.addEventListener('input', update); });
-  if (show) parts.dog.addEventListener('change', update);
+  if (parts.dog) parts.dog.addEventListener('change', update);
+  // the booking button: no dates yet opens the calendar; with dates it brings the price into view. Without the box
+  // (no script, or the box left out) the form still hands the dates to Airbnb.
+  if (form && box) form.addEventListener('submit', function (ev) {
+    ev.preventDefault();
+    if (!ci.value || !co.value) { (ci.value ? co : ci).closest('.f').click(); return; }
+    update();
+    box.scrollIntoView({ block: 'nearest' });
+    box.focus({ preventScroll: true });
+  });
   update();
 })();
 // Sunset at the lodge: today's time from the sunrise equation (NOAA-style; the lodge at 50.8224 N, 0.4563 W), shown
