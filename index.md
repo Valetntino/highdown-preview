@@ -43,9 +43,9 @@ A private lodge for 6 with its own hot tub. Rated 5.0 from 331 reviews on Airbnb
 
 ## Good to know
 
-- It's on the edge of Ferring, not deep countryside. Our lane starts at the main road, with Asda across it. Guests tell us they barely notice the road once they're at the lodge.
-- Our greenhouses are next door. You may see us at work there in the day. The lodge has its own private, fenced garden.
-- The beach isn't on the doorstep. It's 5 to 8 minutes by car, or a 25 to 35 minute walk along the Rife.
+- On the edge of Ferring, easy to reach. Our lane leaves the main road, so Asda is a 10-minute walk for supplies. Once you're down the lane, guests tell us they barely notice the road.
+- Next door to our family nursery. By day you may see us at work in the greenhouses, and in summer we sell our own produce there. The lodge has its own private, fenced garden.
+- The beach by car or on foot. Ferring beach is 5 to 8 minutes by car, or a 25 to 35 minute walk along the Rife.
 
 ## Times from the lodge
 
@@ -75,4 +75,4 @@ Foschini Nursery, Hangleton Lane, Ferring, West Sussex BN12 6PP
 - index.html: the full page with photos
 - index.json: these facts as exact records
 
-Facts checked 26 September 2026. Built 25 Oct 2026 01:28 GMT.
+Facts checked 26 September 2026. Built 25 Oct 2026 18:48 GMT.
