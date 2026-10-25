@@ -13,8 +13,9 @@
   "checkout": "10am",
   "pets_allowed": "one small dog",
   "pets": "We accept one small, well-behaved dog.",
-  "beach_drive_min": "5 to 8",
-  "beach_walk": "about 40 minutes by Ferring Lane",
+  "beach_drive_min": "about 10",
+  "beach_walk": "about 40 minutes (1.7 miles, mostly flat)",
+  "_beach": "Google Maps, 25 Oct 2026 23:35 GMT: walk 38 min (1.7 miles, mostly flat) to Ferring Beach, 39 to the Bluebird Cafe; drive 9 and 10 min at night (K0289)",
   "airbnb_rating": "5.0",
   "airbnb_reviews": 331,
   "airbnb_badges": "Superhost and Guest favourite",
@@ -34,7 +35,7 @@
   "airbnb_reviews_at": "23 October 2026"
  },
  "facts_checked": "26 September 2026",
- "built": "2026-10-25T23:27:52.070806+00:00",
+ "built": "2026-10-25T23:35:09.329270+00:00",
  "answers": [
   {
    "q": "What is provided?",
@@ -78,7 +79,7 @@
   },
   {
    "q": "How far is the beach?",
-   "a": "5 to 8 minutes by car, or about 40 minutes on foot by Ferring Lane (the shorter footpath over the railway is closed until February 2027)."
+   "a": "About 10 minutes by car, or about 40 minutes on foot (1.7 miles, mostly flat; the shorter footpath over the railway is closed until February 2027)."
   },
   {
    "q": "How do we book?",
@@ -150,7 +151,7 @@
   {
    "place": "Ferring beach",
    "walk": "40 min",
-   "drive": "5 to 8 min"
+   "drive": "10 min"
   },
   {
    "place": "Worthing pier and town",

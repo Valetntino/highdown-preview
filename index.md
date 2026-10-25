@@ -7,7 +7,7 @@ A private lodge for 6 with its own hot tub. Rated 5.0 from 331 reviews on Airbnb
 - Sleeps: 6 guests (3 bedrooms, 2 bathrooms)
 - Hot tub: Private and covered (Included in the price)
 - Pets: One small dog (Well behaved, please)
-- Beach: 5 to 8 min by car (South Downs 6 min on foot)
+- Beach: About 10 min by car (South Downs 6 min on foot)
 - Arrive and leave: In from 3pm, out by 10am (Self check-in with a lockbox)
 
 ## How to book
@@ -27,7 +27,7 @@ A private lodge for 6 with its own hot tub. Rated 5.0 from 331 reviews on Airbnb
 - **Is the hot tub private? Does it cost extra?** It is private to the lodge, under its own covered gazebo in your garden, and included in the price. You can use it in the rain.
 - **Check-in and check-out?** Check-in from 3pm, check-out by 10am. Self check-in with a lockbox. Ask us if you need other times.
 - **Can we bring a dog?** Yes. We accept one small, well-behaved dog.
-- **How far is the beach?** 5 to 8 minutes by car, or about 40 minutes on foot by Ferring Lane (the shorter footpath over the railway is closed until February 2027).
+- **How far is the beach?** About 10 minutes by car, or about 40 minutes on foot (1.7 miles, mostly flat; the shorter footpath over the railway is closed until February 2027).
 - **How do we book?** Choose dates and book on Airbnb, or book direct with us: ring or text 07940 796860, or email info@highdownhideaways.com.
 - **Parties or smoking?** No parties, events or smoking.
 
@@ -45,7 +45,7 @@ A private lodge for 6 with its own hot tub. Rated 5.0 from 331 reviews on Airbnb
 
 - On the edge of Ferring, easy to reach. Our lane leaves the main road, so Asda is a 10-minute walk for supplies. Once you're down the lane, guests tell us they barely notice the road.
 - Next door to our family nursery. By day you may see us at work in the greenhouses, and in summer we sell our own produce there. The lodge has its own private, fenced garden.
-- The beach by car or on foot. Ferring beach is 5 to 8 minutes by car, or about a 40 minute walk by Ferring Lane.
+- The beach by car or on foot. Ferring beach is about 10 minutes by car, or about a 40 minute walk (1.7 miles, mostly flat).
 
 ## Times from the lodge
 
@@ -57,7 +57,7 @@ A private lodge for 6 with its own hot tub. Rated 5.0 from 331 reviews on Airbnb
 | Highdown Hill (National Trust) | 16 min | - |
 | Highdown Gardens | 24 min | 5 min |
 | Goring-by-Sea station | 28 min | - |
-| Ferring beach | 40 min | 5 to 8 min |
+| Ferring beach | 40 min | 10 min |
 | Worthing pier and town | - | 15 min |
 | Littlehampton seafront | - | 15 min |
 | Arundel Castle | - | 20 min |
@@ -75,4 +75,4 @@ Foschini Nursery, Hangleton Lane, Ferring, West Sussex BN12 6PP
 - index.html: the full page with photos
 - index.json: these facts as exact records
 
-Facts checked 26 September 2026. Built 25 Oct 2026 23:27 GMT.
+Facts checked 26 September 2026. Built 25 Oct 2026 23:35 GMT.
