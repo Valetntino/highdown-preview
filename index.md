@@ -13,7 +13,7 @@ A private lodge for 6 with its own hot tub. Rated 5.0 from 331 reviews on Airbnb
 ## How to book
 
 - Airbnb: https://www.airbnb.co.uk/rooms/49257209 (add ?check_in=YYYY-MM-DD&check_out=YYYY-MM-DD&adults=N&guests=N for dates; Airbnb shows the total price)
-- Direct with Luca and Trina: choose dates on the page for a total, then send the request by email (info@highdownhideaways.com) or phone or text 07940 796860. Nothing is paid until you have spoken and agreed the dates. Direct nights are 10% under Airbnb’s price for the same night; stays of 3 nights or more (2 for arrivals within 3 weeks); 5% off 4 to 6 nights, 10% off 7 or more
+- Direct with Luca and Trina: choose dates on the page for a total, then send the request by email (info@highdownhideaways.com) or phone or text 07940 796860. Nothing is paid until you have spoken and agreed the dates. £261 a night, £310 on Fridays and Saturdays. Three weeknights are £783; 4 nights or more are 5% less, a week or more 10% less. A dog is £150 a stay, and nothing else is added. Stays of 3 nights or more (2 for arrivals within 3 weeks); nights in the next 14 days are 5% less.
 
 ## Questions answered
 
@@ -75,4 +75,4 @@ Foschini Nursery, Hangleton Lane, Ferring, West Sussex BN12 6PP
 - index.html: the full page with photos
 - index.json: these facts as exact records
 
-Facts checked 26 September 2026. Built 25 Oct 2026 23:35 GMT.
+Facts checked 26 September 2026. Built 25 Oct 2026 23:42 GMT.

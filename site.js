@@ -234,34 +234,54 @@
     if (n < P.min_nights && !(n === 2 && lead <= P.two_night_within_days))
       return { msg: n === 1 ? 'We take stays of 2 nights or more.' :
         '2-night stays open up for arrivals within ' + Math.round(P.two_night_within_days / 7) + ' weeks; otherwise it’s ' + P.min_nights + ' nights or more.' };
-    var direct = 0, air = 0;
+    // each night's own price in whole pounds (nl), so the lines under the total add up to it; the cuts come after
+    var direct = 0, air = 0, base = 0, late = 0, cut = null, nl = [];
     for (var i = 0; i < n; i++) {
       var d = new Date(a.getFullYear(), a.getMonth(), a.getDate() + i), we = d.getDay() === 5 || d.getDay() === 6;
       if (N) {
         var x = N.nights[iso(d)];
         if (!x) return { msg: 'We can’t price these dates here yet. Ask us for a price.' };
         if (!x.open) return { msg: 'Some of these nights are already booked. Try other dates, or ask us.' };
-        direct += x.air * (1 - P.per_night.direct_off);
+        var p = Math.round(x.air * (1 - P.per_night.direct_off));
+        base += p; nl.push([d, p]);
         air += x.air;
         continue;
       }
-      var s = P.season[String(d.getMonth() + 1)] || 1, r = (we ? P.night.fri_sat : P.night.weekday) * s;
-      if (Math.round((d - today) / DAY) <= P.last_minute.within_days) r *= 1 - P.last_minute.off;
-      direct += r;
+      var s = P.season[String(d.getMonth() + 1)] || 1, r = Math.round((we ? P.night.fri_sat : P.night.weekday) * s);
+      base += r; nl.push([d, r]);
+      if (Math.round((d - today) / DAY) <= P.last_minute.within_days) late += r * P.last_minute.off;
       air += (we ? P.airbnb.fri_sat : P.airbnb.weekday) * s;
     }
-    for (var j = 0; j < P.long_stay.length; j++) if (n >= P.long_stay[j].from) { direct *= 1 - P.long_stay[j].off; break; }
+    direct = base - late;
+    for (var j = 0; j < P.long_stay.length; j++) if (n >= P.long_stay[j].from) { cut = P.long_stay[j]; direct *= 1 - cut.off; break; }
     if (n >= 7) air *= 1 - P.airbnb.weekly_discount;
     var net = air * (1 - P.airbnb.host_fee * (1 + P.airbnb.vat_on_fee));
     var floor = (net + P.card_fee.fixed) / (1 - P.card_fee.rate);
     var stay = Math.round(Math.min(Math.max(direct, floor), air));
     var fee = dog ? P.dog_fee : 0;
-    return { n: n, stay: stay, fee: fee, total: stay + fee, from: a, to: b };
+    return { n: n, stay: stay, fee: fee, total: stay + fee, from: a, to: b, base: base, nl: nl, late: late > 0, cut: cut };
+  }
+
+  // the nights under the total, then any cut in words, so the figures add up to the total (Grok price-display return,
+  // 25 Oct 2026: show each night, never a rounded average a night, which would not multiply back to the total)
+  function how(q) {
+    var t, off = q.base - q.stay, why = [];
+    if (off < 0) return '';  // the floor lifted the stay above its nights: no line rather than one that does not add up
+    if (q.n <= 4) t = q.nl.map(function (x) { return x[0].toLocaleDateString('en-GB', { weekday: 'long' }) + ' ' + money(x[1]); }).join(', ');
+    else {
+      var c = {}, k = [];
+      q.nl.forEach(function (x) { if (!c[x[1]]) { c[x[1]] = 0; k.push(x[1]); } c[x[1]]++; });
+      t = k.map(function (p, i) { return c[p] + (i ? '' : (c[p] > 1 ? ' nights' : ' night')) + ' at ' + money(p); }).join(', ');
+    }
+    if (q.late) why.push('nights in the next ' + P.last_minute.within_days + ' days are ' + Math.round(P.last_minute.off * 100) + '% less');
+    if (q.cut) why.push('stays of ' + q.cut.from + ' nights or more are ' + Math.round(q.cut.off * 100) + '% less');
+    return t + '.' + (off > 0 ? ' Less ' + money(off) + (why.length ? ': ' + why.join(', and ') : '') + '.' : '') +
+      (q.fee ? ' Your dog ' + money(q.fee) + '.' : '');
   }
 
   var parts = {};
   if (box) {
-    box.innerHTML = '<p class="q-line"><b class="q-total"></b> <span class="q-what"></span></p>' +
+    box.innerHTML = '<p class="q-line"><b class="q-total"></b> <span class="q-what"></span></p><p class="q-how"></p>' +
       '<p class="q-msg"></p>' +
       (show ? '<label class="q-dog"><input type="checkbox" id="dog"> Bringing your dog <span class="q-fee"></span></label>' : '') +
       '<p class="q-act"><a class="btn" id="req" href="#"></a><a class="q-air" href="#" target="_blank" rel="noopener">Or see these dates on Airbnb</a></p>' +
@@ -269,7 +289,7 @@
       Math.round(P.deposit_share * 100) + '% secures them and the rest is due ' + P.balance_days_before +
       ' days before you arrive, with a ' + money(P.damage_deposit) + ' damage deposit we refund after your stay.' : '') + '</p>';
     box.tabIndex = -1;
-    ['q-line', 'q-total', 'q-what', 'q-msg', 'q-dog', 'q-fee', 'q-air'].forEach(function (c) { parts[c] = box.querySelector('.' + c); });
+    ['q-line', 'q-total', 'q-what', 'q-how', 'q-msg', 'q-dog', 'q-fee', 'q-air'].forEach(function (c) { parts[c] = box.querySelector('.' + c); });
     parts.dog = box.querySelector('#dog'); parts.req = box.querySelector('#req');
   }
 
@@ -287,7 +307,7 @@
     if (box.hidden) return;
     parts['q-air'].setAttribute('href', air + '?check_in=' + ci.value + '&check_out=' + co.value + '&adults=' + ad.value + '&guests=' + ad.value);
     var q = show ? quote(dog) : null, priced = !!(q && q.total !== undefined);
-    parts['q-line'].hidden = !priced; parts['q-msg'].hidden = priced;
+    parts['q-line'].hidden = parts['q-how'].hidden = !priced; parts['q-msg'].hidden = priced;
     if (parts['q-dog']) parts['q-dog'].hidden = !priced;
     if (!priced) {
       parts['q-msg'].textContent = q && q.msg ? q.msg : 'Ask us for a price for these dates and we’ll reply by email.';
@@ -297,6 +317,7 @@
     }
     parts['q-total'].textContent = money(q.total);
     parts['q-what'].textContent = 'for ' + q.n + ' nights, booking direct with us' + (q.fee ? ', including your dog' : '') + '.';
+    parts['q-how'].textContent = how(q); parts['q-how'].hidden = !parts['q-how'].textContent;
     parts['q-fee'].textContent = '(+' + money(P.dog_fee) + ')';
     parts.req.textContent = 'Request these dates';
     parts.req.setAttribute('href', mail('Elderflower Lodge: request for ' + short(q.from) + ' to ' + short(q.to), [

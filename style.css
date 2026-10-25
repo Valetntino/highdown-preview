@@ -102,6 +102,8 @@ h1 { font: 300 clamp(46px, 7.2vw, 96px)/1 var(--serif); letter-spacing: -.01em; 
 .stay-note { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 6px 32px; color: var(--muted); font-size: 15px; }
 .stay-note p { margin: 0; }
 .rating span:first-child { color: var(--ink); }
+.price { max-width: 54ch; }
+.price b { display: block; font-weight: 400; color: var(--ink); }  /* the two nightly rates in the text's own weight: no badge (price display, 25 Oct 2026) */
 /* direct quote (site.js, src/pricing.json): the total for the chosen dates and the request button, under the bar */
 .quote { grid-column: 1 / -1; display: flex; flex-wrap: wrap; align-items: baseline; gap: 10px 28px; border-top: 1px solid var(--rule); padding-top: 18px; color: var(--muted); font-size: 15px; }
 .quote p { margin: 0; }
@@ -110,6 +112,7 @@ h1 { font: 300 clamp(46px, 7.2vw, 96px)/1 var(--serif); letter-spacing: -.01em; 
 .q-total { font-weight: 500; font-size: 30px; }
 .q-dog { display: inline-flex; align-items: center; gap: 8px; cursor: pointer; }
 .q-dog input { width: 18px; height: 18px; accent-color: var(--accent); }
+.q-how { flex-basis: 100%; margin-top: -6px; max-width: 62ch; }  /* the nights that make the total, smaller than it */
 .q-terms { flex-basis: 100%; max-width: 62ch; }
 .q-act { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 24px; }
 .q-air { color: var(--muted); }
