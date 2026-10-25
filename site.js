@@ -246,7 +246,7 @@
     var net = air * (1 - P.airbnb.host_fee * (1 + P.airbnb.vat_on_fee));
     var floor = (net + P.card_fee.fixed) / (1 - P.card_fee.rate);
     var stay = Math.round(Math.min(Math.max(direct, floor), air));
-    var fee = dog ? (P.dog_fee.busy_months.indexOf(a.getMonth() + 1) >= 0 ? P.dog_fee.busy : P.dog_fee.quiet) : 0;
+    var fee = dog ? P.dog_fee : 0;
     return { n: n, stay: stay, fee: fee, total: stay + fee, from: a, to: b };
   }
 
@@ -288,8 +288,7 @@
     }
     parts['q-total'].textContent = money(q.total);
     parts['q-what'].textContent = 'for ' + q.n + ' nights, booking direct with us' + (q.fee ? ', including your dog' : '') + '.';
-    var month = q.from.getMonth() + 1;
-    parts['q-fee'].textContent = '(+' + money(P.dog_fee.busy_months.indexOf(month) >= 0 ? P.dog_fee.busy : P.dog_fee.quiet) + ')';
+    parts['q-fee'].textContent = '(+' + money(P.dog_fee) + ')';
     parts.req.textContent = 'Request these dates';
     parts.req.setAttribute('href', mail('Elderflower Lodge: request for ' + short(q.from) + ' to ' + short(q.to), [
       'Hello Luca and Trina,', '', 'We’d like to stay at Elderflower Lodge, booking direct.', '',
