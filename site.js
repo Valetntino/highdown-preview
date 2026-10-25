@@ -53,23 +53,96 @@
     setTimeout(function () { ci.disabled = false; co.disabled = false; }, 0);
   });
 })();
-// Direct price: the "ask us for a price for your dates" email carries the dates and party typed in the booking bar,
-// so a guest who prefers to book direct does not have to type them again (research/growth-v1, 24 Oct 2026).
+// Direct price: the total for the dates typed in the booking bar, worked out from the settings in #pricing
+// (src/pricing.json; research/booking-v1/PLAN.md, 25 Oct 2026). The guest requests the dates by email; the owners
+// reply and agree them before anything is paid. Until show_everywhere is set, the quote shows only on the preview
+// link and local tests; elsewhere the "ask us for a price" email still carries the dates and party.
 (function () {
   var ask = document.getElementById('ask'), ci = document.getElementById('ci'), co = document.getElementById('co'),
-      ad = document.getElementById('ad');
+      ad = document.getElementById('ad'), box = document.getElementById('quote'), cfg = document.getElementById('pricing');
   if (!ask || !ci || !co || !ad) return;
-  var base = ask.getAttribute('href').split('?')[0];
+  var P = null;
+  try { P = JSON.parse(cfg.textContent); } catch (err) { P = null; }
+  var local = /^(localhost|127\.0\.0\.1)$/.test(location.hostname), preview = /\/highdown-preview\//.test(location.pathname);
+  var show = !!(P && box && (P.show_everywhere || local || preview));
+  var base = ask.getAttribute('href').split('?')[0], DAY = 864e5;
+  function day(v) { var p = v.split('-'); return new Date(+p[0], +p[1] - 1, +p[2]); }
   function words(v) {
-    if (!v) return 'not chosen yet';
-    var p = v.split('-'); return new Date(+p[0], +p[1] - 1, +p[2]).toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+    return v ? day(v).toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }) : 'not chosen yet';
+  }
+  function short(d) { return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }); }
+  function money(x) { return '£' + Math.round(x).toLocaleString('en-GB'); }
+
+  // One stay's total, or a reason it can't be priced here. Each night: its own rate x the month's season, less the
+  // last-minute step; then the long-stay discount; then held between the floor (the same stay's Airbnb net after
+  // card fees) and the ceiling (the same stay's Airbnb price).
+  function quote(dog) {
+    if (!ci.value || !co.value) return null;
+    var a = day(ci.value), b = day(co.value), n = Math.round((b - a) / DAY);
+    if (n < 1) return null;
+    var now = new Date(), today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    var lead = Math.round((a - today) / DAY);
+    if (lead < P.earliest_days_ahead) return { msg: 'For arrivals in the next ' + P.earliest_days_ahead + ' days, please ring us.' };
+    if (n < P.min_nights && !(n === 2 && lead <= P.two_night_within_days))
+      return { msg: n === 1 ? 'We take stays of 2 nights or more.' :
+        '2-night stays open up for arrivals within ' + Math.round(P.two_night_within_days / 7) + ' weeks; otherwise it’s ' + P.min_nights + ' nights or more.' };
+    var direct = 0, air = 0;
+    for (var i = 0; i < n; i++) {
+      var d = new Date(a.getFullYear(), a.getMonth(), a.getDate() + i), we = d.getDay() === 5 || d.getDay() === 6;
+      var s = P.season[String(d.getMonth() + 1)] || 1, r = (we ? P.night.fri_sat : P.night.weekday) * s;
+      if (Math.round((d - today) / DAY) <= P.last_minute.within_days) r *= 1 - P.last_minute.off;
+      direct += r;
+      air += (we ? P.airbnb.fri_sat : P.airbnb.weekday) * s;
+    }
+    for (var j = 0; j < P.long_stay.length; j++) if (n >= P.long_stay[j].from) { direct *= 1 - P.long_stay[j].off; break; }
+    if (n >= 7) air *= 1 - P.airbnb.weekly_discount;
+    var net = air * (1 - P.airbnb.host_fee * (1 + P.airbnb.vat_on_fee));
+    var floor = (net + P.card_fee.fixed) / (1 - P.card_fee.rate);
+    var stay = Math.round(Math.min(Math.max(direct, floor), air));
+    var fee = dog ? (P.dog_fee.busy_months.indexOf(a.getMonth() + 1) >= 0 ? P.dog_fee.busy : P.dog_fee.quiet) : 0;
+    return { n: n, stay: stay, fee: fee, total: stay + fee, from: a, to: b };
+  }
+
+  var parts = {};
+  if (show) {
+    box.innerHTML = '<p class="q-line"><b class="q-total"></b> <span class="q-what"></span></p>' +
+      '<p class="q-msg"></p>' +
+      '<label class="q-dog"><input type="checkbox" id="dog"> Bringing your dog <span class="q-fee"></span></label>' +
+      '<p class="q-act"><a class="btn" id="req" href="#">Request these dates</a></p>' +
+      '<p class="q-terms">Nothing is paid until we’ve spoken and agreed your dates. Then ' +
+      Math.round(P.deposit_share * 100) + '% secures them and the rest is due ' + P.balance_days_before +
+      ' days before you arrive, with a ' + money(P.damage_deposit) + ' damage deposit we refund after your stay.</p>';
+    ['q-line', 'q-total', 'q-what', 'q-msg', 'q-dog', 'q-fee', 'q-act', 'q-terms'].forEach(function (c) { parts[c] = box.querySelector('.' + c); });
+    parts.dog = box.querySelector('#dog'); parts.req = box.querySelector('#req');
+  }
+
+  function mail(subject, lines) {
+    return base + '?subject=' + encodeURIComponent(subject) + '&body=' + encodeURIComponent(lines.join('\n'));
   }
   function update() {
-    var body = 'Hello Luca and Trina,\n\nPlease could you give us a direct price for Elderflower Lodge.\n\nArrive: ' + words(ci.value) +
-      '\nLeave: ' + words(co.value) + '\nGuests: ' + ad.value + '\n\nThank you,\n';
-    ask.setAttribute('href', base + '?subject=' + encodeURIComponent('Elderflower Lodge: a direct price') + '&body=' + encodeURIComponent(body));
+    var dog = show && parts.dog.checked, q = show ? quote(dog) : null;
+    var lines = ['Hello Luca and Trina,', '', 'Please could you give us a direct price for Elderflower Lodge.', '',
+      'Arrive: ' + words(ci.value), 'Leave: ' + words(co.value), 'Guests: ' + ad.value, '', 'Thank you,', ''];
+    ask.setAttribute('href', mail('Elderflower Lodge: a direct price', lines));
+    if (!show) return;
+    box.hidden = !q;
+    if (!q) return;
+    var priced = q.total !== undefined;
+    parts['q-line'].hidden = parts['q-dog'].hidden = parts['q-act'].hidden = parts['q-terms'].hidden = !priced;
+    parts['q-msg'].hidden = priced;
+    if (!priced) { parts['q-msg'].textContent = q.msg; return; }
+    parts['q-total'].textContent = money(q.total);
+    parts['q-what'].textContent = 'for ' + q.n + ' nights, booking direct with us' + (q.fee ? ', including your dog' : '') + '.';
+    var month = q.from.getMonth() + 1;
+    parts['q-fee'].textContent = '(+' + money(P.dog_fee.busy_months.indexOf(month) >= 0 ? P.dog_fee.busy : P.dog_fee.quiet) + ')';
+    parts.req.setAttribute('href', mail('Elderflower Lodge: request for ' + short(q.from) + ' to ' + short(q.to), [
+      'Hello Luca and Trina,', '', 'We’d like to stay at Elderflower Lodge, booking direct.', '',
+      'Arrive: ' + words(ci.value), 'Leave: ' + words(co.value), 'Nights: ' + q.n, 'Guests: ' + ad.value,
+      'Dog: ' + (dog ? 'yes, one small dog' : 'no'), 'Price shown on your website: ' + money(q.total) + ' in total', '',
+      'Name:', 'Phone:', '', 'Thank you,', '']));
   }
   [ci, co, ad].forEach(function (el) { el.addEventListener('change', update); el.addEventListener('input', update); });
+  if (show) parts.dog.addEventListener('change', update);
   update();
 })();
 // Sunset at the lodge: today's time from the sunrise equation (NOAA-style; the lodge at 50.8224 N, 0.4563 W), shown
