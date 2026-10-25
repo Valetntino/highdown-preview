@@ -6,7 +6,7 @@ A private lodge for 6 with its own hot tub. Rated 5.0 from 331 reviews on Airbnb
 
 - Sleeps: 6 guests (3 bedrooms, 2 bathrooms)
 - Hot tub: Private and covered (Included in the price)
-- Pets: No pets (Ask first about assistance animals)
+- Pets: One small dog (Well behaved, please)
 - Beach: 5 to 8 min by car (South Downs 6 min on foot)
 - Arrive and leave: In from 3pm, out by 10am (Self check-in with a lockbox)
 
@@ -26,7 +26,7 @@ A private lodge for 6 with its own hot tub. Rated 5.0 from 331 reviews on Airbnb
 - **How many people does it sleep?** Up to 6, in two king-size bedrooms and a twin room. A travel cot and highchair are free on request.
 - **Is the hot tub private? Does it cost extra?** It is private to the lodge, under its own covered gazebo in your garden, and included in the price. You can use it in the rain.
 - **Check-in and check-out?** Check-in from 3pm, check-out by 10am. Self check-in with a lockbox. Ask us if you need other times.
-- **Can we bring a dog?** No pets. Ask us about assistance animals before booking.
+- **Can we bring a dog?** Yes. We accept one small, well-behaved dog.
 - **How far is the beach?** 5 to 8 minutes by car, or 25 to 35 minutes on foot along the Ferring Rife.
 - **How do we book?** Choose dates and book on Airbnb, or book direct with us: ring or text 07940 796860, or email info@highdownhideaways.com.
 - **Parties or smoking?** No parties, events or smoking.
@@ -75,4 +75,4 @@ Foschini Nursery, Hangleton Lane, Ferring, West Sussex BN12 6PP
 - index.html: the full page with photos
 - index.json: these facts as exact records
 
-Facts checked 26 September 2026. Built 24 Oct 2026 23:32 BST.
+Facts checked 26 September 2026. Built 25 Oct 2026 01:30 BST.

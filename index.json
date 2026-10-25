@@ -11,8 +11,8 @@
   "hot_tub": "Private to the lodge, under its own covered gazebo, included in the price",
   "checkin": "3pm",
   "checkout": "10am",
-  "pets_allowed": "no",
-  "pets": "No pets. Ask about assistance animals before booking.",
+  "pets_allowed": "one small dog",
+  "pets": "We accept one small, well-behaved dog.",
   "beach_drive_min": "5 to 8",
   "beach_walk": "25 to 35 minutes along the Ferring Rife",
   "airbnb_rating": "5.0",
@@ -34,7 +34,7 @@
   "airbnb_reviews_at": "23 October 2026"
  },
  "facts_checked": "26 September 2026",
- "built": "2026-10-24T23:32:07.561322+01:00",
+ "built": "2026-10-25T01:30:59.076906+01:00",
  "answers": [
   {
    "q": "What is provided?",
@@ -74,7 +74,7 @@
   },
   {
    "q": "Can we bring a dog?",
-   "a": "No pets. Ask us about assistance animals before booking."
+   "a": "Yes. We accept one small, well-behaved dog."
   },
   {
    "q": "How far is the beach?",
