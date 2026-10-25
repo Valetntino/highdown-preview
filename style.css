@@ -129,7 +129,7 @@ h1 { font: 300 clamp(46px, 7.2vw, 96px)/1 var(--serif); letter-spacing: -.01em; 
 .cal[hidden], .cal-back[hidden] { display: none; }
 .cal-top { display: flex; justify-content: space-between; align-items: baseline; gap: 16px; }
 .cal-say { margin: 0; font: 400 22px/1.3 var(--serif); }
-.cal button { font: inherit; color: inherit; background: none; border: 0; padding: 0; cursor: pointer; }
+.cal button:not(.btn) { font: inherit; color: inherit; background: none; border: 0; padding: 0; cursor: pointer; }
 .cal-x, .cal-clear { color: var(--muted); text-decoration: underline; text-underline-offset: 3px; font-size: 14px; }
 .cal-nav { display: flex; justify-content: space-between; margin: 14px 0 -30px; position: relative; z-index: 1; pointer-events: none; }
 .cal-nav button { pointer-events: auto; width: 40px; height: 34px; font-size: 20px; border-radius: 2px; }
@@ -157,6 +157,27 @@ h1 { font: 300 clamp(46px, 7.2vw, 96px)/1 var(--serif); letter-spacing: -.01em; 
   .cal-days button { height: 44px; font-size: 16px; }
   html.cal-lock { overflow: hidden; }
 }
+
+/* guests panel (site.js): the calendar's frame, with plus and minus and the dog */
+.js .book select.native { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
+.gsel { display: block; width: 100%; height: 30px; margin: 6px 0 0; padding: 0 16px 0 0; border: 0; text-align: left; cursor: pointer;
+  font: 400 26px/1.3 var(--serif); color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  background: linear-gradient(45deg, transparent 50%, var(--muted) 50%) right 5px center / 5px 5px no-repeat,
+    linear-gradient(-45deg, transparent 50%, var(--muted) 50%) right 0 center / 5px 5px no-repeat; }
+.gsel:focus-visible { outline: none; }
+.gp-row { display: flex; justify-content: space-between; align-items: center; gap: 20px; padding: 14px 0; border-bottom: 1px solid var(--rule); }
+.gp-row:first-child { padding-top: 0; }
+.gp-h { margin: 0; font: 400 22px/1.2 var(--serif); }
+.gp-s { margin: 4px 0 0; color: var(--muted); font-size: 14px; }
+.gp-step { display: flex; align-items: center; gap: 14px; }
+.gp-step button { width: 40px; height: 40px; border: 1px solid var(--ink) !important; border-radius: 2px; font-size: 20px; line-height: 1; }
+.gp-step button:disabled { border-color: var(--rule) !important; color: var(--rule); cursor: default; }
+.gp-step button:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
+.gp-n { min-width: 1.4em; text-align: center; font: 400 26px/1 var(--serif); }
+.gp-dog { display: inline-flex; align-items: center; gap: 8px; cursor: pointer; white-space: nowrap; }
+.gp-dog input { display: inline-block; width: 20px; height: 20px; margin: 0; -webkit-appearance: auto; appearance: auto; accent-color: var(--accent); }  /* the panel sits inside .book, whose input rule strips the native look (K0288: the tick box vanished) */
+.gp-foot { display: flex; justify-content: flex-end; padding-top: 14px; }
+@media (min-width: 700px) { .gp { width: min(400px, 100%); } }
 
 /* shared chapter frame: a 12-column grid inside the gutters */
 .intro, .ch, .rooms, .hosts, .photos, .where, .words, .answers {

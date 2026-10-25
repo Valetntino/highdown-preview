@@ -179,7 +179,8 @@
   cal.addEventListener('keydown', function (ev) { if (ev.key === 'Escape') { ev.stopPropagation(); close(true); } });
   back.addEventListener('click', function () { close(false); });
   document.addEventListener('click', function (ev) {
-    if (!cal.hidden && !cal.contains(ev.target) && !ev.target.closest('.book .f')) close(false);
+    var fld = ev.target.closest('.book .f');  // a date field reopens it; any other click, the guests field included, closes it
+    if (!cal.hidden && !cal.contains(ev.target) && !(fld && fld.querySelector('.when'))) close(false);
   });
   try { wide.addEventListener('change', function () { if (!cal.hidden) { back.hidden = wide.matches; document.documentElement.classList.toggle('cal-lock', !wide.matches); render(); } }); } catch (err) { /* old Safari */ }
   label(0); label(1);
@@ -308,6 +309,75 @@
     box.focus({ preventScroll: true });
   });
   update();
+})();
+// Guests: a small panel in the calendar's style, in place of the phone's own list, which the user called ugly
+// (25 Oct 2026, K0288). Plus and minus up to the lodge's limit, and the dog, kept in step with the quote's dog box.
+// The hidden select still holds the number, so the form, the quote and the emails read it as before.
+(function () {
+  var ad = document.getElementById('ad'), form = document.getElementById('book');
+  if (!ad || !form) return;
+  var f = ad.closest('.f'), max = ad.options.length, dog = document.getElementById('dog');
+  var P = null;
+  try { P = JSON.parse(document.getElementById('pricing').textContent); } catch (err) { P = null; }
+  var wide = window.matchMedia('(min-width: 700px)');
+  var b = document.createElement('button');
+  b.type = 'button'; b.className = 'gsel'; b.setAttribute('aria-haspopup', 'dialog'); b.setAttribute('aria-expanded', 'false');
+  ad.parentNode.insertBefore(b, ad);
+  ad.tabIndex = -1; ad.setAttribute('aria-hidden', 'true'); ad.classList.add('native');
+
+  var gp = document.createElement('div'), back = document.createElement('div');
+  gp.className = 'cal gp'; gp.hidden = true; gp.setAttribute('role', 'dialog'); gp.setAttribute('aria-label', 'Guests');
+  back.className = 'cal-back'; back.hidden = true;
+  gp.innerHTML = '<div class="gp-row"><div><p class="gp-h">Guests</p><p class="gp-s">The lodge sleeps ' + max + '</p></div>' +
+    '<div class="gp-step"><button type="button" class="gp-minus" aria-label="One fewer guest">&#8722;</button>' +
+    '<output class="gp-n" aria-live="polite"></output>' +
+    '<button type="button" class="gp-plus" aria-label="One more guest">+</button></div></div>' +
+    (dog ? '<div class="gp-row"><div><p class="gp-h">Dog</p><p class="gp-s">One small, well-behaved dog' +
+      (P ? ', ' + '£' + P.dog_fee + ' a stay' : '') + '</p></div>' +
+      '<label class="gp-dog"><input type="checkbox"> Bringing a dog</label></div>' : '') +
+    '<div class="gp-foot"><button type="button" class="btn gp-done">Done</button></div>';
+  form.appendChild(gp); document.body.appendChild(back);
+  var n = gp.querySelector('.gp-n'), minus = gp.querySelector('.gp-minus'), plus = gp.querySelector('.gp-plus');
+  var gdog = gp.querySelector('.gp-dog input');
+
+  function show() {
+    var v = +ad.value, d = !!(dog && dog.checked);
+    b.textContent = v + ' guest' + (v > 1 ? 's' : '') + (d ? ', 1 dog' : '');
+    b.setAttribute('aria-label', 'Guests: ' + v + (d ? ', and a dog' : ''));
+    n.textContent = v; minus.disabled = v <= 1; plus.disabled = v >= max;
+    if (gdog) gdog.checked = d;
+  }
+  function set(v) {
+    ad.value = String(Math.max(1, Math.min(max, v)));
+    ad.dispatchEvent(new Event('change', { bubbles: true }));
+    show();
+  }
+  function open() {
+    if (wide.matches) gp.style.left = f.offsetLeft + 'px'; else gp.style.left = '';
+    gp.hidden = false; back.hidden = wide.matches;
+    document.documentElement.classList.toggle('cal-lock', !wide.matches);
+    b.setAttribute('aria-expanded', 'true');
+    (plus.disabled ? minus : plus).focus({ preventScroll: wide.matches });
+  }
+  function close(refocus) {
+    if (gp.hidden) return;
+    gp.hidden = true; back.hidden = true;
+    document.documentElement.classList.remove('cal-lock');
+    b.setAttribute('aria-expanded', 'false');
+    if (refocus) b.focus({ preventScroll: true });
+  }
+  f.addEventListener('click', function (ev) { if (gp.contains(ev.target)) return; ev.preventDefault(); if (gp.hidden) open(); else close(true); });
+  minus.addEventListener('click', function () { set(+ad.value - 1); });
+  plus.addEventListener('click', function () { set(+ad.value + 1); });
+  if (gdog) gdog.addEventListener('change', function () {
+    dog.checked = gdog.checked; dog.dispatchEvent(new Event('change', { bubbles: true })); show();
+  });
+  if (dog) dog.addEventListener('change', show);
+  gp.querySelector('.gp-done').addEventListener('click', function () { close(true); });
+  gp.addEventListener('keydown', function (ev) { if (ev.key === 'Escape') { ev.stopPropagation(); close(true); } });
+  back.addEventListener('click', function () { close(false); });
+  document.addEventListener('click', function (ev) { if (!gp.hidden && !gp.contains(ev.target) && !f.contains(ev.target)) close(false); });
+  show();
 })();
 // Sunset at the lodge: today's time from the sunrise equation (NOAA-style; the lodge at 50.8224 N, 0.4563 W), shown
 // in UK time. After sunset it shows tomorrow's sunrise. Hidden without this file. Why: blind judges named a live
