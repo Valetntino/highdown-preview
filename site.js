@@ -7,11 +7,19 @@
     btn.addEventListener('click', function () { set(!top.classList.contains('open')); });
     top.querySelectorAll('nav a').forEach(function (a) { a.addEventListener('click', function () { set(false); }); });
     document.addEventListener('click', function (ev) { if (!top.contains(ev.target)) set(false); });
-    document.addEventListener('keydown', function (ev) { if (ev.key === 'Escape') set(false); });
+    document.addEventListener('keydown', function (ev) {
+      if (ev.key === 'Escape' && top.classList.contains('open')) { set(false); btn.focus(); }
+    });
+    window.matchMedia('(min-width: 1280px)').addEventListener('change', function () { set(false); });
   }
   var bar = document.querySelector('.mbar'), book = document.getElementById('book');
   if (bar && book && 'IntersectionObserver' in window) {
-    new IntersectionObserver(function (es) { bar.classList.toggle('away', es[0].isIntersecting); }).observe(book);
+    new IntersectionObserver(function (es) {
+      var away = es[0].isIntersecting;
+      bar.classList.toggle('away', away);
+      bar.inert = away; // A bar outside the viewport must not leave a hidden keyboard stop.
+      bar.setAttribute('aria-hidden', away ? 'true' : 'false');
+    }).observe(book);
   }
 })();
 // Date picker: a calendar in the site's own type and colours, in place of the phone's built-in one, which the user
