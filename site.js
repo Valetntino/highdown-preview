@@ -61,21 +61,27 @@
   var ask = document.getElementById('ask'), ci = document.getElementById('ci'), co = document.getElementById('co'),
       ad = document.getElementById('ad'), box = document.getElementById('quote'), cfg = document.getElementById('pricing');
   if (!ask || !ci || !co || !ad) return;
-  var P = null;
+  var P = null, N = null, nt = document.getElementById('nights');
   try { P = JSON.parse(cfg.textContent); } catch (err) { P = null; }
+  try { N = nt ? JSON.parse(nt.textContent) : null; } catch (err) { N = null; }
   var local = /^(localhost|127\.0\.0\.1)$/.test(location.hostname), preview = /\/highdown-preview\//.test(location.pathname);
-  var show = !!(P && box && (P.show_everywhere || local || preview));
   var base = ask.getAttribute('href').split('?')[0], DAY = 864e5;
+  // Each night's Airbnb price from PriceLabs (src/nights.json); once its prices are older than stale_days the quote
+  // hides rather than guess, since the flat settings no longer match Airbnb.
+  var stale = !!(N && P && !(Date.now() - Date.parse(N.fetched) <= P.per_night.stale_days * DAY));
+  var show = !!(P && box && !stale && (P.show_everywhere || local || preview));
   function day(v) { var p = v.split('-'); return new Date(+p[0], +p[1] - 1, +p[2]); }
+  function iso(d) { return d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2) + '-' + ('0' + d.getDate()).slice(-2); }
   function words(v) {
     return v ? day(v).toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }) : 'not chosen yet';
   }
   function short(d) { return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }); }
   function money(x) { return '£' + Math.round(x).toLocaleString('en-GB'); }
 
-  // One stay's total, or a reason it can't be priced here. Each night: its own rate x the month's season, less the
-  // last-minute step; then the long-stay discount; then held between the floor (the same stay's Airbnb net after
-  // card fees) and the ceiling (the same stay's Airbnb price).
+  // One stay's total, or a reason it can't be priced here. Each night: with nights.json, that night's Airbnb price
+  // less direct_off (PriceLabs already moves season and last minute); without it, its own rate x the month's season,
+  // less the last-minute step. Then the long-stay discount; then held between the floor (the same stay's Airbnb net
+  // after card fees) and the ceiling (the same stay's Airbnb price).
   function quote(dog) {
     if (!ci.value || !co.value) return null;
     var a = day(ci.value), b = day(co.value), n = Math.round((b - a) / DAY);
@@ -89,6 +95,14 @@
     var direct = 0, air = 0;
     for (var i = 0; i < n; i++) {
       var d = new Date(a.getFullYear(), a.getMonth(), a.getDate() + i), we = d.getDay() === 5 || d.getDay() === 6;
+      if (N) {
+        var x = N.nights[iso(d)];
+        if (!x) return { msg: 'We can’t price these dates here yet. Ask us for a price.' };
+        if (!x.open) return { msg: 'Some of these nights are already booked. Try other dates, or ask us.' };
+        direct += x.air * (1 - P.per_night.direct_off);
+        air += x.air;
+        continue;
+      }
       var s = P.season[String(d.getMonth() + 1)] || 1, r = (we ? P.night.fri_sat : P.night.weekday) * s;
       if (Math.round((d - today) / DAY) <= P.last_minute.within_days) r *= 1 - P.last_minute.off;
       direct += r;
