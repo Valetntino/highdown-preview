@@ -334,7 +334,7 @@ blockquote footer { font-size: var(--t-small); color: var(--muted); }
 html:has(dialog[open]), html:has(.top.open) { overflow: hidden; }
 html:has(.top.open) .bbar { visibility: hidden; }
 .viewer figure { margin: 0; height: calc(100% - 64px); display: grid; grid-template-rows: minmax(0, 1fr) auto; place-items: center; padding: 16px 16px 0; box-sizing: border-box; }
-.viewer img { max-width: 100%; max-height: 100%; object-fit: contain; }
+.viewer img { max-width: 100%; max-height: 100%; object-fit: contain; background: center / cover no-repeat; }
 .viewer figcaption { color: var(--ground-2); margin: 8px 0 0; }
 .v-nav { display: flex; justify-content: center; align-items: center; gap: 24px; height: 64px; margin: 0; }
 .v-nav button { font: 500 var(--t-ui)/1.4 var(--sans); color: var(--ground); background: none; border: 0; border-bottom: 1px solid currentColor; padding: 8px 2px; cursor: pointer; }

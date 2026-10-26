@@ -641,16 +641,48 @@
     f.appendChild(nav);
     var n = nav.querySelector('.s-n');
     im.draggable = false;  // a mouse swipe would start a native image drag, which never sends pointerup
+    function set(x) {
+      var s = x[0];
+      return 'img/' + s + '-xs.webp 400w, img/' + s + '-sm.webp 800w, img/' + s + '.webp 1400w' + (x[4] ? ', img/' + s + '-xl.webp 2400w' : '');
+    }
+    // the photos either side are fetched ahead, so a press shows the next one at once rather than after the
+    // download (1.7-2.5 s a press on slow 4G, 26 Oct; user: "doesn't feel clean and has a slight lag")
+    var held = {};
+    function ahead() {
+      // Next first and ahead of the page's other photos, Previous once it is in: on a slow link the two at once
+      // queued behind a dozen page photos and Next still took 7 s
+      var nx = list[(k + 1) % list.length], pv = list[(k - 1 + list.length) % list.length];
+      function one(x, then) {
+        if (held[x[0]]) { if (then) then(); return; }
+        var p = new Image(); p.fetchPriority = 'high'; p.sizes = src.sizes; p.srcset = set(x); held[x[0]] = p;
+        if (then) p.onload = p.onerror = then;
+      }
+      one(nx, function () { one(pv); });
+    }
     function show(j) {
       k = (j + list.length) % list.length;
-      var x = list[k], s = x[0];
-      src.srcset = 'img/' + s + '-xs.webp 400w, img/' + s + '-sm.webp 800w, img/' + s + '.webp 1400w' + (x[4] ? ', img/' + s + '-xl.webp 2400w' : '');
+      var x = list[k], s = x[0], p = held[s];
+      // not fetched yet: its 400 px copy (about 30 KB) shows at once and the full one replaces it when it lands
+      if (p && p.complete && p.naturalWidth) src.srcset = set(x);
+      else {
+        src.srcset = 'img/' + s + '-xs.webp 400w';
+        if (!p) { p = new Image(); p.fetchPriority = 'high'; p.sizes = src.sizes; p.srcset = set(x); held[s] = p; }
+        p.addEventListener('load', function () { if (list[k][0] === s) src.srcset = set(x); });
+      }
       im.src = 'img/' + s + '-sm.jpg'; im.alt = x[1]; im.width = x[2]; im.height = x[3];
       n.textContent = (k + 1) + ' / ' + list.length;
       pic.dataset.v = s;
       if (pic.getAttribute('role') === 'button') pic.setAttribute('aria-label', 'Open photo: ' + x[1]);
+      ahead();
     }
-    show(0);
+    // the page's own first photo stays as written (rewriting it at load restarted its download)
+    n.textContent = '1 / ' + list.length; pic.dataset.v = list[0][0];
+    if ('IntersectionObserver' in window) {
+      var near = new IntersectionObserver(function (es) {
+        if (es[0].isIntersecting) { near.disconnect(); ahead(); }
+      }, { rootMargin: '1200px 0px' });
+      near.observe(f);
+    } else ahead();
     nav.addEventListener('click', function (ev) {
       var b = ev.target.closest('button'); ev.stopPropagation();
       if (b) show(k + (b.classList.contains('s-next') ? 1 : -1));
@@ -674,9 +706,12 @@
     var s = slug(img); if (s && order.indexOf(s) < 0) order.push(s);
   });
   if (!order.length) return;
-  var caps = {};
+  var caps = {}, sets = {}, dims = {};
   [].slice.call((td || document).querySelectorAll('.grid figure')).forEach(function (f) {
-    caps[slug(f.querySelector('img'))] = (f.querySelector('figcaption') || {}).textContent || '';
+    var im = f.querySelector('img'), s = slug(im), so = f.querySelector('source');
+    caps[s] = (f.querySelector('figcaption') || {}).textContent || '';
+    sets[s] = so ? so.getAttribute('srcset') : '';
+    dims[s] = [im.width || 4, im.height || 3];
   });
   var d = document.createElement('dialog'), i = 0, from = null;
   d.className = 'viewer';
@@ -687,11 +722,38 @@
   document.body.appendChild(d);
   var img = d.querySelector('img'), cap = d.querySelector('figcaption'), n = d.querySelector('.v-n');
   img.draggable = false;  // as the steppers: a mouse swipe started a native image drag and never moved the photo (26 Oct audit)
+  // Each photo shows at once from its 400 px copy (about 30 KB) and sharpens when the size the screen needs
+  // arrives; the photos either side are fetched once this one is in. Before (26 Oct, slow 4G): a 320 KB JPEG
+  // a step, 1.2-2.4 s blank, and a box 0 px tall while it came, so a step showed no photo at all.
+  function fit(s) {
+    var r = dims[s][0] / dims[s][1];
+    return Math.ceil(Math.min(innerWidth - 32, (innerHeight - 120) * r));
+  }
+  function box(s) {  // the photo's own shape before it loads, so the small copy fills it
+    var w = fit(s); img.style.width = w + 'px'; img.style.height = Math.round(w * dims[s][1] / dims[s][0]) + 'px';
+  }
+  addEventListener('resize', function () { if (d.open) { box(order[i]); img.sizes = fit(order[i]) + 'px'; } });
+  var held = {};
+  function fetch1(s) {
+    if (!s || held[s]) return;
+    var p = new Image(); p.sizes = fit(s) + 'px'; p.srcset = sets[s] || ''; if (!sets[s]) p.src = 'img/' + s + '.jpg'; held[s] = p;
+  }
   function show(k) {
     i = (k + order.length) % order.length;
-    img.src = 'img/' + order[i] + '.jpg'; img.alt = caps[order[i]];
-    cap.textContent = caps[order[i]];
+    var s = order[i], at = i;
+    img.removeAttribute('srcset'); img.removeAttribute('src');  // never leave the last photo up under the new caption
+    box(s);
+    img.style.backgroundImage = 'url(img/' + s + '-xs.webp)';
+    img.sizes = fit(s) + 'px';
+    if (sets[s]) img.srcset = sets[s]; else img.src = 'img/' + s + '.jpg';
+    img.alt = caps[s];
+    cap.textContent = caps[s];
     n.textContent = (i + 1) + ' of ' + order.length;
+    img.onload = function () {
+      if (at !== i) return;
+      img.style.backgroundImage = '';
+      fetch1(order[(i + 1) % order.length]); fetch1(order[(i - 1 + order.length) % order.length]);
+    };
   }
   function view(s, el) { from = el; show(order.indexOf(s)); d.showModal(); d.querySelector('.v-next').focus(); }
   // every photo of the lodge that is in the full list opens here: the hero is left alone
@@ -726,7 +788,30 @@
     if (x0 !== null && Math.abs(ev.clientX - x0) > 50) { swiped = true; show(i + (ev.clientX < x0 ? 1 : -1)); }
     x0 = null;
   });
-  d.addEventListener('close', function () { img.removeAttribute('src'); if (from) from.focus(); });
+  d.addEventListener('close', function () { img.removeAttribute('srcset'); img.removeAttribute('src'); if (from) from.focus(); });
+})();
+
+// A photo whose download fails (a phone dropping signal mid-scroll) is asked for again, up to 3 times, instead of
+// staying blank until the page is refreshed (user, 26 Oct: "the images dont load on my phone and I have to refresh").
+(function () {
+  document.addEventListener('error', function (ev) {
+    var im = ev.target;
+    if (im.tagName !== 'IMG' || !(im.getAttribute('src') || im.getAttribute('srcset'))) return;
+    var n = +(im.dataset.tries || 0);
+    if (n >= 3) return;
+    im.dataset.tries = n + 1;
+    setTimeout(function () {
+      var p = im.parentNode, again = '#r' + (n + 1);
+      // a changed address makes the browser fetch it again; the part after # is never sent
+      if (p && p.tagName === 'PICTURE') [].forEach.call(p.querySelectorAll('source'), function (so) {
+        so.srcset = so.getAttribute('srcset').replace(/(\.\w+)(#r\d)?(\s)/g, '$1' + again + '$3');
+      });
+      if (im.getAttribute('srcset')) im.srcset = im.getAttribute('srcset').replace(/(\.\w+)(#r\d)?(\s)/g, '$1' + again + '$3');
+      if (im.getAttribute('src')) im.src = im.getAttribute('src').replace(/#r\d$/, '') + again;
+    }, 1500 * (n + 1));
+  }, true);
+  // the viewer reuses one image for every photo, so its count starts again on each photo that arrives
+  document.addEventListener('load', function (ev) { if (ev.target.tagName === 'IMG') delete ev.target.dataset.tries; }, true);
 })();
 
 // Back closes an open photo dialog rather than leaving the page, as a phone's back gesture does in an app (26 Oct
