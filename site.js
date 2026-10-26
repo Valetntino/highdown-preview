@@ -743,7 +743,13 @@
     d.addEventListener('back', function () { byBack = true; d.close(); });
   });
   window.addEventListener('popstate', function () {
-    if (skip) { skip--; return; }
+    if (skip) {
+      // our own Back step can land on an in-page link's entry, and Chrome then focuses that section
+      skip--;
+      var had = document.activeElement;
+      setTimeout(function () { if (had && had !== document.activeElement && document.contains(had)) had.focus({ preventScroll: true }); }, 0);
+      return;
+    }
     var top = [].slice.call(document.querySelectorAll('dialog[open]')).pop();  // the viewer comes after the photo list
     if (top) top.dispatchEvent(new Event('back'));
   });
