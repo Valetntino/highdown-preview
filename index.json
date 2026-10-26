@@ -15,6 +15,7 @@
   "pets": "We accept one small, well-behaved dog.",
   "beach_drive_min": "about 10",
   "beach_walk": "about 40 minutes (1.7 miles, mostly flat)",
+  "_travel": "Google Maps, 25-26 Oct 2026: walks as Google gives them, except Highdown Hill 16 min (Google lacks the footpath up Hangleton Lane; Sussex Express walk); drives as a range from the night figure to a Saturday 11:00 departure, rounded to 5 above 20 min",
   "_beach": "Google Maps, 25 Oct 2026 23:35 GMT: walk 38 min (1.7 miles, mostly flat) to Ferring Beach, 39 to the Bluebird Cafe; drive 9 and 10 min at night (K0289)",
   "airbnb_rating": "5.0",
   "airbnb_reviews": 331,
@@ -35,7 +36,7 @@
   "airbnb_reviews_at": "23 October 2026"
  },
  "facts_checked": "26 September 2026",
- "built": "2026-10-25T23:42:32.971487+00:00",
+ "built": "2026-10-26T00:04:26.975328+00:00",
  "answers": [
   {
    "q": "What is provided?",
@@ -59,7 +60,7 @@
   },
   {
    "q": "How do we get there without a car?",
-   "a": "Goring-by-Sea station is 1.5 miles away (about 28 minutes on foot); Angmering station is 1.9 miles."
+   "a": "Goring-by-Sea station is 1.5 miles away (about 30 minutes on foot); Angmering station is 1.9 miles."
   },
   {
    "q": "How many people does it sleep?",
@@ -140,12 +141,12 @@
   },
   {
    "place": "Highdown Gardens",
-   "walk": "24 min",
+   "walk": "27 min",
    "drive": "5 min"
   },
   {
    "place": "Goring-by-Sea station",
-   "walk": "28 min",
+   "walk": "30 min",
    "drive": ""
   },
   {
@@ -156,37 +157,37 @@
   {
    "place": "Worthing pier and town",
    "walk": "",
-   "drive": "15 min"
+   "drive": "10 to 15 min"
   },
   {
    "place": "Littlehampton seafront",
    "walk": "",
-   "drive": "15 min"
+   "drive": "15 to 20 min"
   },
   {
    "place": "Arundel Castle",
    "walk": "",
-   "drive": "20 min"
+   "drive": "15 to 20 min"
   },
   {
    "place": "Chichester",
    "walk": "",
-   "drive": "35 min"
+   "drive": "25 to 45 min"
   },
   {
    "place": "Brighton",
    "walk": "",
-   "drive": "40 min"
+   "drive": "30 to 55 min"
   },
   {
    "place": "Goodwood",
    "walk": "",
-   "drive": "45 min"
+   "drive": "25 to 35 min"
   },
   {
    "place": "Gatwick Airport",
    "walk": "",
-   "drive": "1 hour"
+   "drive": "45 to 55 min"
   }
  ],
  "reviews": [

@@ -22,7 +22,7 @@ A private lodge for 6 with its own hot tub. Rated 5.0 from 331 reviews on Airbnb
 - **Is there Wi-Fi and TV?** Fast Wi-Fi throughout. A 50-inch smart TV in the lounge (Netflix, Disney+, Prime Video) and a 40-inch smart TV in every bedroom.
 - **Is it step-free?** Inside is all on one level, with a large wet room and widened doorways. There are 2 steps to the front door; we put a ramp down on request.
 - **Is there air conditioning?** Not yet. Fans are provided for hot nights.
-- **How do we get there without a car?** Goring-by-Sea station is 1.5 miles away (about 28 minutes on foot); Angmering station is 1.9 miles.
+- **How do we get there without a car?** Goring-by-Sea station is 1.5 miles away (about 30 minutes on foot); Angmering station is 1.9 miles.
 - **How many people does it sleep?** Up to 6, in two king-size bedrooms and a twin room. A travel cot and highchair are free on request.
 - **Is the hot tub private? Does it cost extra?** It is private to the lodge, under its own covered gazebo in your garden, and included in the price. You can use it in the rain.
 - **Check-in and check-out?** Check-in from 3pm, check-out by 10am. Self check-in with a lockbox. Ask us if you need other times.
@@ -55,16 +55,16 @@ A private lodge for 6 with its own hot tub. Rated 5.0 from 331 reviews on Airbnb
 | Asda supermarket | 10 min | - |
 | Ferring village, shops and the Henty Arms pub | 15 to 20 min | - |
 | Highdown Hill (National Trust) | 16 min | - |
-| Highdown Gardens | 24 min | 5 min |
-| Goring-by-Sea station | 28 min | - |
+| Highdown Gardens | 27 min | 5 min |
+| Goring-by-Sea station | 30 min | - |
 | Ferring beach | 40 min | 10 min |
-| Worthing pier and town | - | 15 min |
-| Littlehampton seafront | - | 15 min |
-| Arundel Castle | - | 20 min |
-| Chichester | - | 35 min |
-| Brighton | - | 40 min |
-| Goodwood | - | 45 min |
-| Gatwick Airport | - | 1 hour |
+| Worthing pier and town | - | 10 to 15 min |
+| Littlehampton seafront | - | 15 to 20 min |
+| Arundel Castle | - | 15 to 20 min |
+| Chichester | - | 25 to 45 min |
+| Brighton | - | 30 to 55 min |
+| Goodwood | - | 25 to 35 min |
+| Gatwick Airport | - | 45 to 55 min |
 
 ## Address
 
@@ -75,4 +75,4 @@ Foschini Nursery, Hangleton Lane, Ferring, West Sussex BN12 6PP
 - index.html: the full page with photos
 - index.json: these facts as exact records
 
-Facts checked 26 September 2026. Built 25 Oct 2026 23:42 GMT.
+Facts checked 26 September 2026. Built 26 Oct 2026 00:04 GMT.
