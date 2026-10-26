@@ -8,7 +8,7 @@
 <meta name="robots" content="noindex, nofollow">
 <meta name="theme-color" content="#EDE8E0">
 <meta name="facts-checked" content="26 September 2026">
-<meta name="page-built" content="26 Oct 2026 17:41 GMT">
+<meta name="page-built" content="26 Oct 2026 17:53 GMT">
 <link rel="canonical" href="https://www.highdownhideaways.com/">
 <meta property="og:type" content="website">
 <meta property="og:locale" content="en_GB">
@@ -196,10 +196,28 @@
     if (!d.dataset.hold) return; delete d.dataset.hold; removeEventListener('scroll', go);
     // the steppers' fetch-ahead goes first: released after the page's photos it queued behind them (Next 1.6 s)
     dispatchEvent(new Event('photos-go'));
-    held.forEach(function (i) { [].slice.call(i.parentNode.querySelectorAll('source')).concat(i).forEach(function (x) {
-      if (x.dataset.hold) { if (!x.hasAttribute('srcset')) x.setAttribute('srcset', x.dataset.hold); delete x.dataset.hold; }
-      if (x.dataset.holdSrc) { if (!x.hasAttribute('src')) x.setAttribute('src', x.dataset.holdSrc); delete x.dataset.holdSrc; } }); });
+    if (!('IntersectionObserver' in window)) { held.forEach(put); return; }
+    // then the held photos 2 at a time, nearest the screen first, each once it comes within 150% of the screen:
+    // on a slow link every photo in flight takes an equal share, so ~7 released together all arrived late
+    var io = new IntersectionObserver(function (es) {
+      es.forEach(function (e) { if (e.isIntersecting) { want.push(e.target); io.unobserve(e.target); } }); feed();
+    }, { rootMargin: '150% 0px' });
+    held.forEach(function (i) { io.observe(i); });
+    addEventListener('scroll', feed, { passive: true });
   }
+  var busy = 0, want = [];
+  function gap(i) { var r = i.getBoundingClientRect(); return r.bottom < 0 ? -r.bottom : Math.max(0, r.top - innerHeight); }
+  function feed() {
+    want.sort(function (a, b) { return gap(a) - gap(b); });
+    while (busy < 2 && want.length) {
+      var i = want.shift(); busy++; put(i); i.loading = 'eager';
+      if (i.complete) busy--; else { var done = function () { busy--; feed(); };
+        i.addEventListener('load', done, { once: true }); i.addEventListener('error', done, { once: true }); }
+    }
+  }
+  function put(i) { [].slice.call(i.parentNode.querySelectorAll('source')).concat(i).forEach(function (x) {
+    if (x.dataset.hold) { if (!x.hasAttribute('srcset')) x.setAttribute('srcset', x.dataset.hold); delete x.dataset.hold; }
+    if (x.dataset.holdSrc) { if (!x.hasAttribute('src')) x.setAttribute('src', x.dataset.holdSrc); delete x.dataset.holdSrc; } }); }
   h.addEventListener('load', go); h.addEventListener('error', go);
   addEventListener('scroll', go, { passive: true }); setTimeout(go, 4000);
 })();</script>
