@@ -66,7 +66,7 @@
       b.addEventListener('click', function (ev) {
         ev.stopPropagation();  // the page's own outside-click handlers would close what this opens
         root.classList.add('from-bar');
-        real[k].dispatchEvent(new MouseEvent('click', { bubbles: true }));
+        shown(k).click();  // the field's own button: a click on its <label> is re-sent to that button, toggling twice
       });
     });
     go.addEventListener('click', function (ev) {
