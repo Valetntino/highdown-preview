@@ -641,10 +641,7 @@
     f.appendChild(nav);
     var n = nav.querySelector('.s-n');
     im.draggable = false;  // a mouse swipe would start a native image drag, which never sends pointerup
-    function set(x) {
-      var s = x[0];
-      return 'img/' + s + '-xs.webp 400w, img/' + s + '-sm.webp 800w, img/' + s + '.webp 1400w' + (x[4] ? ', img/' + s + '-xl.webp 2400w' : '');
-    }
+    function set(x) { return x[4]; }  // the build's srcset for that photo (every tier it wrote, true widths)
     // the photos either side are fetched ahead, so a press shows the next one at once rather than after the
     // download (1.7-2.5 s a press on slow 4G, 26 Oct; user: "doesn't feel clean and has a slight lag")
     var held = {};
