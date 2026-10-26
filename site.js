@@ -287,7 +287,8 @@
       '<p class="q-act"><a class="btn" id="req" href="#"></a><a class="q-air" href="#" target="_blank" rel="noopener">Or see these dates on Airbnb</a></p>' +
       '<p class="q-terms">Nothing is paid until we’ve spoken and agreed your dates.' + (show && P.terms_confirmed ? ' Then ' +
       Math.round(P.deposit_share * 100) + '% secures them and the rest is due ' + P.balance_days_before +
-      ' days before you arrive, with a ' + money(P.damage_deposit) + ' damage deposit we refund after your stay.' : '') + '</p>';
+      ' days before you arrive, with a ' + money(P.damage_deposit) + ' damage deposit we refund after your stay.' : '') +
+      ' We use your details only to arrange your stay and keep our accounts, and never pass them on.</p>';
     box.tabIndex = -1;
     ['q-line', 'q-total', 'q-what', 'q-how', 'q-msg', 'q-dog', 'q-fee', 'q-air'].forEach(function (c) { parts[c] = box.querySelector('.' + c); });
     parts.dog = box.querySelector('#dog'); parts.req = box.querySelector('#req');
@@ -435,4 +436,40 @@
     box.querySelector('.sun-t').textContent = fmt(t);
     box.hidden = false;
   } catch (err) { /* leave it hidden */ }
+})();
+// Photo viewer (F67): a tap on a photo opens it large on the page, with next and previous, instead of leaving the
+// site for the bare file. Keyboard: arrows move, Escape closes (the dialog's own), focus returns to the photo.
+(function () {
+  var links = [].slice.call(document.querySelectorAll('.photos figure a'));
+  if (!links.length || !window.HTMLDialogElement) return;
+  var d = document.createElement('dialog'), i = 0, from = null;
+  d.className = 'viewer';
+  d.setAttribute('aria-label', 'Photo viewer');
+  d.innerHTML = '<figure><img alt=""><figcaption></figcaption></figure><p class="v-nav">' +
+    '<button type="button" class="v-prev">Previous</button><span class="v-n" aria-live="polite"></span>' +
+    '<button type="button" class="v-next">Next</button><button type="button" class="v-x">Close</button></p>';
+  document.body.appendChild(d);
+  var img = d.querySelector('img'), cap = d.querySelector('figcaption'), n = d.querySelector('.v-n');
+  function show(k) {
+    i = (k + links.length) % links.length;
+    var a = links[i], small = a.querySelector('img');
+    img.src = a.getAttribute('href'); img.alt = small ? small.alt : '';
+    cap.textContent = (a.parentNode.querySelector('figcaption') || {}).textContent || '';
+    n.textContent = (i + 1) + ' of ' + links.length;
+  }
+  links.forEach(function (a, k) {
+    a.addEventListener('click', function (ev) {
+      if (ev.ctrlKey || ev.metaKey || ev.shiftKey) return;
+      ev.preventDefault(); from = a; show(k); d.showModal(); d.querySelector('.v-next').focus();
+    });
+  });
+  d.querySelector('.v-prev').addEventListener('click', function () { show(i - 1); });
+  d.querySelector('.v-next').addEventListener('click', function () { show(i + 1); });
+  d.querySelector('.v-x').addEventListener('click', function () { d.close(); });
+  d.addEventListener('click', function (ev) { if (ev.target === d) d.close(); });
+  d.addEventListener('keydown', function (ev) {
+    if (ev.key === 'ArrowRight') show(i + 1);
+    if (ev.key === 'ArrowLeft') show(i - 1);
+  });
+  d.addEventListener('close', function () { img.removeAttribute('src'); if (from) from.focus(); });
 })();

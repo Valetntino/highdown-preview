@@ -254,7 +254,17 @@ blockquote footer { font-size: 15px; color: var(--muted); }
 .mosaic figure:first-child { grid-column: span 2; }
 .mosaic img, .grid img { aspect-ratio: 4 / 3; object-fit: cover; }
 .mosaic a, .grid a { display: block; text-decoration: none; }
-.all .grid { margin-top: 24px; }
+.all .grid { margin-top: 14px; }
+.grid-h { font: italic 400 23px/1.3 var(--serif); color: var(--muted); margin: 32px 0 0; }
+.viewer { border: 0; padding: 0; max-width: 100vw; max-height: 100vh; width: 100vw; height: 100vh; background: var(--ink); color: var(--ground); }
+.viewer::backdrop { background: var(--ink); }
+.viewer figure { margin: 0; height: calc(100% - 64px); display: grid; grid-template-rows: minmax(0, 1fr) auto; place-items: center; padding: 16px 16px 0; box-sizing: border-box; }
+.viewer img { max-width: 100%; max-height: 100%; object-fit: contain; }
+.viewer figcaption { color: var(--ground-2); margin: 8px 0 0; }
+.v-nav { display: flex; justify-content: center; align-items: center; gap: 24px; height: 64px; margin: 0; }
+.v-nav button { font: 500 14px/1.4 var(--sans); color: var(--ground); background: none; border: 0; border-bottom: 1px solid currentColor; padding: 8px 2px; cursor: pointer; }
+.v-nav button:focus-visible { outline: 1px solid var(--ground); outline-offset: 3px; }
+.v-n { font-size: 14px; color: var(--ground-2); }
 
 /* where: the drawn map and the times */
 .where { display: grid; gap: 48px 72px; }
