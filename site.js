@@ -580,7 +580,7 @@
 (function () {
   if (!window.HTMLDialogElement) return;
   var all = document.getElementById('all-photos');
-  function slug(img) { var m = img && /img\/(.+?)-sm\.jpg/.exec(img.getAttribute('src') || ''); return m ? m[1] : null; }
+  function slug(img) { var m = img && /img\/(.+?)-sm\.jpg/.exec(img.getAttribute('src') || img.dataset.holdSrc || ''); return m ? m[1] : null; }  // or held for the hero (HOLD_JS)
 
   // the area list: hover, focus or tap shows that area
   var tabs = [].slice.call(document.querySelectorAll('.tour-list a')), panels = [].slice.call(document.querySelectorAll('.tour-panel'));
@@ -652,6 +652,9 @@
       // Next first and ahead of the page's other photos, Previous once it is in: on a slow link the two at once
       // queued behind a dozen page photos and Next still took 7 s
       var nx = list[(k + 1) % list.length], pv = list[(k - 1 + list.length) % list.length];
+      // the 400 px copies either side first (about 30 KB each): a press then shows a photo at once even when the
+      // page's released photos fill a slow link (Next took 3.2 s behind them, 26 Oct), and the full one follows
+      [nx, pv].forEach(function (x) { if (!held[x[0] + '-xs']) { var q = new Image(); q.fetchPriority = 'high'; q.src = 'img/' + x[0] + '-xs.webp'; held[x[0] + '-xs'] = q; } });
       function one(x, then) {
         if (held[x[0]]) { if (then) then(); return; }
         var p = new Image(); p.fetchPriority = 'high'; p.sizes = src.sizes; p.srcset = set(x); held[x[0]] = p;
@@ -679,7 +682,10 @@
     n.textContent = '1 / ' + list.length; pic.dataset.v = list[0][0];
     if ('IntersectionObserver' in window) {
       var near = new IntersectionObserver(function (es) {
-        if (es[0].isIntersecting) { near.disconnect(); ahead(); }
+        if (!es[0].isIntersecting) return;
+        near.disconnect();
+        // while the page holds lower photos for the hero (build.py HOLD_JS), fetching ahead would compete with it
+        if (document.documentElement.dataset.hold) addEventListener('photos-go', ahead, { once: true }); else ahead();
       }, { rootMargin: '1200px 0px' });
       near.observe(f);
     } else ahead();
@@ -710,7 +716,7 @@
   [].slice.call((td || document).querySelectorAll('.grid figure')).forEach(function (f) {
     var im = f.querySelector('img'), s = slug(im), so = f.querySelector('source');
     caps[s] = (f.querySelector('figcaption') || {}).textContent || '';
-    sets[s] = so ? so.getAttribute('srcset') : '';
+    sets[s] = so ? so.getAttribute('srcset') || so.dataset.hold || '' : '';  // held until the hero arrives (HOLD_JS)
     dims[s] = [im.width || 4, im.height || 3];
   });
   var d = document.createElement('dialog'), i = 0, from = null;

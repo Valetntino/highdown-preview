@@ -255,7 +255,7 @@ details[open] > summary::after { transform: translateY(2px) rotate(-135deg); }
 .beds { list-style: none; margin: 0; padding: 0; display: grid; gap: 28px 12px; grid-template-columns: repeat(2, minmax(0, 1fr)); }
 .bed { display: block; text-decoration: none; }
 .bed-ph { position: relative; display: block; overflow: hidden; }
-.bed-ph img { aspect-ratio: 4 / 5; object-fit: cover; }
+.bed-ph img { aspect-ratio: 1 / 1; object-fit: cover; }  /* square: 4:5 cut the beds (user 26 Oct); build checks rooms_bed_box */
 .bed-ph picture + picture { position: absolute; inset: 0; opacity: 0; }
 .bed-t { display: block; margin-top: 12px; color: var(--muted); font-size: var(--t-small); }
 .bed-t b { display: block; font: 500 var(--s-2)/1.25 var(--serif); color: var(--ink); }
@@ -391,6 +391,8 @@ html:has(.top.open) .bbar { visibility: hidden; }
 .foot-name { font: 300 var(--s-3)/1.2 var(--serif); margin-bottom: 16px !important; }
 .foot-links { margin-top: 24px !important; }
 .foot-links a { margin: 0 12px; }
+.foot-credit a { white-space: nowrap; }
+.foot-credit { margin-top: 32px !important; font-size: var(--t-small); color: rgba(237, 232, 224, .55); }
 
 /* the booking bar, on every screen at every width (K0293: our own version of The PIG's always-on bar). Its fields
    open the page's own calendar and guests panel just above it, so dates are chosen without scrolling back up; it
