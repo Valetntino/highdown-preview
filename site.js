@@ -5,8 +5,17 @@
   var top = document.querySelector('.top'), btn = document.querySelector('.menu-btn');
   if (!top) return;
   if (btn) {
-    function set(open) { top.classList.toggle('open', open); btn.setAttribute('aria-expanded', open ? 'true' : 'false'); }
-    btn.addEventListener('click', function () { set(!top.classList.contains('open')); });
+    function set(open) {
+      top.classList.toggle('open', open); btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+      btn.lastChild.textContent = open ? 'Close' : 'Menu';  // the open list covers the page, so the button says how to leave it
+    }
+    // opening puts focus on the first link, since the logo and Book sit between the button and the list (26 Oct audit),
+    // and Tab past the list closes it, as the booking panels do
+    btn.addEventListener('click', function () {
+      var open = !top.classList.contains('open'); set(open);
+      if (open) top.querySelector('nav a').focus();
+    });
+    top.addEventListener('focusout', function (ev) { var t = ev.relatedTarget; if (t && !top.contains(t)) set(false); });
     top.querySelectorAll('nav a').forEach(function (a) { a.addEventListener('click', function () { set(false); }); });
     document.addEventListener('click', function (ev) { if (!top.contains(ev.target)) set(false); });
     document.addEventListener('keydown', function (ev) {
@@ -46,6 +55,10 @@
     }).join('');
     bar.insertBefore(box, go);
     bar.classList.add('on');
+    // keep what keyboard focus scrolls to clear of the bar, as scroll-padding-top does for the header (page check, 26 Oct:
+    // Tab left the photo arrows under the bar at 375 px)
+    var pad = function () { root.style.scrollPaddingBottom = (bar.offsetHeight + 12) + 'px'; };
+    pad(); window.addEventListener('resize', pad);
     var f = [].slice.call(box.querySelectorAll('.bb-f'));
     var shown = function (k) { return k < 2 ? real[k].querySelector('.shown') : real[2].querySelector('.gsel'); };
     function mirror() {
@@ -53,15 +66,18 @@
         var s = shown(k), t = s ? s.textContent.trim() : '', none = !t || (s && s.classList.contains('empty'));
         b.lastChild.textContent = none ? 'Add date' : t;
         b.lastChild.className = none ? 'empty' : '';
+        b.setAttribute('aria-label', s && s.getAttribute('aria-label') || b.textContent);  // the field's own words, not 'ArriveAdd date'
       });
       if (window.matchMedia('(max-width: 699px)').matches && ci.value) {
         f[0].firstChild.textContent = 'Dates';
         f[0].lastChild.textContent = shown(0).textContent.trim().replace(/^\w+\s/, '') + (co.value ? ' to ' + shown(1).textContent.trim().replace(/^\w+\s/, '') : '');
+        f[0].setAttribute('aria-label', 'Dates: ' + f[0].lastChild.textContent);
       } else f[0].firstChild.textContent = 'Arrive';
       go.textContent = ci.value && co.value ? 'See your price' : 'Check dates';
     }
     [ci, co, ad].forEach(function (el) { el.addEventListener('change', mirror); });
-    var dog = document.getElementById('dog'); if (dog) dog.addEventListener('change', mirror);
+    // the dog box is made later, by the quote: listen on the page, after its own handlers have run (26 Oct audit)
+    document.addEventListener('change', function (ev) { if (ev.target.id === 'dog') mirror(); });
     f.forEach(function (b, k) {
       b.addEventListener('click', function (ev) {
         ev.stopPropagation();  // the page's own outside-click handlers would close what this opens
@@ -70,7 +86,11 @@
       });
     });
     go.addEventListener('click', function (ev) {
-      if (ci.value && co.value) return;  // both dates in: the link goes to the booking line and its price
+      // both dates in: bring the price and its request button into view together; the plain #book jump left the button
+      // under the phone's fold (26 Oct audit: 803 px on an 812 px screen)
+      var q = document.getElementById('quote');
+      if (ci.value && co.value && q && !q.hidden) { ev.preventDefault(); q.scrollIntoView({ block: 'start' }); q.focus({ preventScroll: true }); }
+      if (ci.value && co.value) return;
       ev.preventDefault(); ev.stopPropagation(); f[0].click();
     });
     // once a panel is closed, the next one opened from the booking line itself sits under it again
@@ -80,12 +100,18 @@
     setTimeout(mirror, 0);
   }
   if ('IntersectionObserver' in window) {
-    new IntersectionObserver(function (es) {
-      var away = es[0].isIntersecting;
+    // the bar also steps aside while the price is on screen, which sits below the booking line (26 Oct audit)
+    var seen = new Map();
+    var io = new IntersectionObserver(function (es) {
+      es.forEach(function (x) { seen.set(x.target, x.isIntersecting); });
+      var away = [].slice.call(seen.values()).some(Boolean);
       bar.classList.toggle('away', away);
       bar.inert = away; // A bar outside the viewport must not leave a hidden keyboard stop.
       bar.setAttribute('aria-hidden', away ? 'true' : 'false');
-    }).observe(book);
+      setTimeout(function () { bar.classList.add('ready'); }, 300);
+    });
+    io.observe(book);
+    var qb = document.getElementById('quote'); if (qb) io.observe(qb);
   }
 })();
 // Date picker: a calendar in the site's own type and colours, in place of the phone's built-in one, which the user
@@ -146,12 +172,15 @@
     '<div class="cal-foot"><button type="button" class="cal-clear">Clear dates</button><p class="cal-rule"></p></div>';
   form.appendChild(cal); document.body.appendChild(back);
   var months = cal.querySelector('.cal-months'), say = cal.querySelector('.cal-say');
+  var tel = document.querySelector('a[href^="tel:"]');
   if (P) cal.querySelector('.cal-rule').textContent = 'Stays of ' + P.min_nights + ' nights or more, or 2 nights for arrivals in the next ' +
-    Math.round(P.two_night_within_days / 7) + ' weeks.';
+    Math.round(P.two_night_within_days / 7) + ' weeks. To arrive ' + (P.earliest_days_ahead === 2 ? 'today or tomorrow' : 'sooner') +
+    ', ring us' + (tel ? ' on ' + tel.textContent.replace(/^\D+/, '').trim() : '') + '.';
 
   // why day d can't be chosen now ('past', 'short', 'booked'), or ''
   function why(d) {
     if (d < today) return 'past';
+    if (picking === 'in' && P && d < add(today, P.earliest_days_ahead)) return 'soon';  // the quote would only say to ring
     if (picking === 'out' && start && d > start) return fits(start, d);
     return booked(d) ? 'booked' : '';
   }
@@ -180,11 +209,11 @@
       b.setAttribute('aria-disabled', no ? 'true' : 'false');
       b.setAttribute('aria-pressed', s || (e && end) ? 'true' : 'false');
       b.setAttribute('aria-label', fmt(d, LONG) + (s ? ', arrival' : e && end ? ', leaving' : '') +
-        (no === 'booked' ? ', booked' : no === 'short' ? ', too short a stay' : ''));
+        (no === 'booked' ? ', booked' : no === 'short' ? ', too short a stay' : no === 'soon' ? ', ring us to arrive this soon' : ''));
       b.tabIndex = +d === +aim ? 0 : -1;
     });
-    say.textContent = start && end ? nights(start, end) + ' nights, ' + fmt(start, SHORT) + ' to ' + fmt(end, SHORT) :
-      start ? 'Arriving ' + fmt(start, SHORT) + '. Now choose the day you leave.' : 'Choose the day you arrive.';
+    say.textContent = note || (start && end ? nights(start, end) + ' nights, ' + fmt(start, SHORT) + ' to ' + fmt(end, SHORT) :
+      start ? 'Arriving ' + fmt(start, SHORT) + '. Now choose the day you leave.' : 'Choose the day you arrive.');
   }
   // the day keyboard focus starts on: the date being chosen, or the first open day on show
   function target() {
@@ -196,10 +225,18 @@
     ci.value = start ? iso(start) : ''; co.value = end ? iso(end) : '';
     [ci, co].forEach(function (el, k) { label(k); el.dispatchEvent(new Event('change', { bubbles: true })); });
   }
+  var note = '';  // why the last day tapped can't be chosen, said until the next choice
   function choose(d) {
-    if (why(d)) return;
+    var no = why(d);
+    if (no) {
+      note = no === 'short' ? 'Too short: stays from ' + fmt(start, SHORT) + ' are ' + least(start) + ' nights or more.' :
+        no === 'booked' ? (picking === 'out' ? 'A night in that stay is already booked.' : 'That night is already booked.') :
+        no === 'soon' ? 'To arrive this soon, please ring us' + (tel ? ' on ' + tel.textContent.replace(/^\D+/, '').trim() : '') + '.' : '';
+      paint(); return;
+    }
+    note = '';
     if (picking === 'out' && start && d > start) end = d;
-    else { start = d; if (end && (end <= d || fits(d, end))) end = null; }
+    else { start = d; end = null; }  // a new arrival starts a new stay: keeping the old leaving day closed the picker unasked (26 Oct audit)
     picking = end ? 'in' : 'out'; hover = null;
     sync();
     if (!end) { paint(); return; }
@@ -207,7 +244,9 @@
     var q = document.getElementById('quote');  // bring the price for these dates into view
     if (q && !q.hidden) q.scrollIntoView({ block: 'nearest' });
   }
+  var opener = null;  // the control that opened the calendar, which gets focus back when it closes
   function open(mode) {
+    opener = document.activeElement; note = '';
     picking = mode === 'out' && start ? 'out' : 'in';
     view = month(start && start > today ? start : today);
     cal.hidden = false; back.hidden = wide.matches;
@@ -224,7 +263,7 @@
     cal.hidden = true; back.hidden = true; hover = null;
     document.documentElement.classList.remove('cal-lock');
     trig.forEach(function (b) { b.setAttribute('aria-expanded', 'false'); });
-    if (refocus) trig[end ? 1 : 0].focus({ preventScroll: true });
+    if (refocus) (opener && opener.closest && opener.closest('.bbar') ? opener : trig[end ? 1 : 0]).focus({ preventScroll: true });
   }
   function go(d) {
     if (d < today || d >= month(last, 1)) return;
@@ -254,6 +293,9 @@
   cal.querySelector('.cal-x').addEventListener('click', function () { close(true); });
   cal.querySelector('.cal-clear').addEventListener('click', function () { start = end = null; picking = 'in'; sync(); render(); });
   cal.addEventListener('keydown', function (ev) { if (ev.key === 'Escape') { ev.stopPropagation(); close(true); } });
+  // Tab out of the picker closes it, so focus never sits behind the phone's sheet (26 Oct audit); a redraw drops focus
+  // with no new target, and a date field takes it to reopen, so neither counts
+  cal.addEventListener('focusout', function (ev) { var t = ev.relatedTarget; if (t && !cal.contains(t) && !t.closest('.book .f')) close(false); });
   back.addEventListener('click', function () { close(false); });
   document.addEventListener('click', function (ev) {
     var fld = ev.target.closest('.book .f');  // a date field reopens it; any other click, the guests field included, closes it
@@ -276,7 +318,7 @@
   try { P = JSON.parse(cfg.textContent); } catch (err) { P = null; }
   try { N = nt ? JSON.parse(nt.textContent) : null; } catch (err) { N = null; }
   var local = /^(localhost|127\.0\.0\.1)$/.test(location.hostname), preview = /\/highdown-preview\//.test(location.pathname);
-  var base = ask.getAttribute('href').split('?')[0], DAY = 864e5;
+  var base = ask.getAttribute('href').split('?')[0], DAY = 864e5, tel = document.querySelector('a[href^="tel:"]'), sent = '';
   // Each night's Airbnb price from PriceLabs (src/nights.json); once its prices are older than stale_days the quote
   // hides rather than guess, since the flat settings no longer match Airbnb.
   var stale = !!(N && P && !(Date.now() - Date.parse(N.fetched) <= P.per_night.stale_days * DAY));
@@ -299,7 +341,10 @@
     if (n < 1) return null;
     var now = new Date(), today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
     var lead = Math.round((a - today) / DAY);
-    if (lead < P.earliest_days_ahead) return { msg: 'For arrivals in the next ' + P.earliest_days_ahead + ' days, please ring us.' };
+    if (lead < P.earliest_days_ahead) {
+      var tel = document.querySelector('a[href^="tel:"]');
+      return { msg: 'For arrivals in the next ' + P.earliest_days_ahead + ' days, please ring us' + (tel ? ' on ' + tel.textContent.replace(/^\D+/, '').trim() : '') + '.' };
+    }
     if (n < P.min_nights && !(n === 2 && lead <= P.two_night_within_days))
       return { msg: n === 1 ? 'We take stays of 2 nights or more.' :
         '2-night stays open up for arrivals within ' + Math.round(P.two_night_within_days / 7) + ' weeks; otherwise it’s ' + P.min_nights + ' nights or more.' };
@@ -328,7 +373,7 @@
     var floor = (net + P.card_fee.fixed) / (1 - P.card_fee.rate);
     var stay = Math.round(Math.min(Math.max(direct, floor), air));
     var fee = dog ? P.dog_fee : 0;
-    return { n: n, stay: stay, fee: fee, total: stay + fee, from: a, to: b, base: base, nl: nl, late: late > 0, cut: cut };
+    return { n: n, stay: stay, fee: fee, total: stay + fee, from: a, to: b, base: base, nl: nl, late: late > 0, cut: cut, direct: direct };
   }
 
   // the nights under the total, then any cut in words, so the figures add up to the total (Grok price-display return,
@@ -342,8 +387,11 @@
       q.nl.forEach(function (x) { if (!c[x[1]]) { c[x[1]] = 0; k.push(x[1]); } c[x[1]]++; });
       t = k.map(function (p, i) { return c[p] + (i ? '' : (c[p] > 1 ? ' nights' : ' night')) + ' at ' + money(p); }).join(', ');
     }
-    if (q.late) why.push('nights in the next ' + P.last_minute.within_days + ' days are ' + Math.round(P.last_minute.off * 100) + '% less');
-    if (q.cut) why.push('stays of ' + q.cut.from + ' nights or more are ' + Math.round(q.cut.off * 100) + '% less');
+    // the percentages are named only when they make the whole cut; when our floor or the Airbnb price set the stay
+    // instead, a named 20% beside a smaller sum does not add up (26 Oct audit)
+    if (Math.round(q.base - q.direct) !== off) why.push('our price for booking direct');
+    else if (q.late) why.push('nights in the next ' + P.last_minute.within_days + ' days are ' + Math.round(P.last_minute.off * 100) + '% less');
+    if (q.cut && why[0] !== 'our price for booking direct') why.push('stays of ' + q.cut.from + ' nights or more are ' + Math.round(q.cut.off * 100) + '% less');
     return t + '.' + (off > 0 ? ' Less ' + money(off) + (why.length ? ': ' + why.join(', and ') : '') + '.' : '') +
       (q.fee ? ' Your dog ' + money(q.fee) + '.' : '');
   }
@@ -354,6 +402,9 @@
       '<p class="q-msg"></p>' +
       (show ? '<label class="q-dog"><input type="checkbox" id="dog"> Bringing your dog <span class="q-fee"></span></label>' : '') +
       '<p class="q-act"><a class="btn" id="req" href="#"></a><a class="q-air" href="#" target="_blank" rel="noopener">Or see these dates on Airbnb</a></p>' +
+      '<p class="q-alt">No email program? <button type="button" class="q-copy">Copy the request</button> and send it to ' +
+      '<a href="' + base + '">' + base.replace('mailto:', '') + '</a>' + (tel ? ', or ring <a href="' + tel.getAttribute('href') + '">' + tel.textContent.replace(/^\D+/, '').trim() + '</a>' : '') +
+      '. <span class="q-done" aria-live="polite"></span></p>' +
       '<p class="q-terms">Nothing is paid until we’ve spoken and agreed your dates.' + (show && P.terms_confirmed ? ' Then ' +
       Math.round(P.deposit_share * 100) + '% secures them and the rest is due ' + P.balance_days_before +
       ' days before you arrive, with a ' + money(P.damage_deposit) + ' damage deposit we refund after your stay.' : '') +
@@ -361,9 +412,21 @@
     box.tabIndex = -1;
     ['q-line', 'q-total', 'q-what', 'q-how', 'q-msg', 'q-dog', 'q-fee', 'q-air'].forEach(function (c) { parts[c] = box.querySelector('.' + c); });
     parts.dog = box.querySelector('#dog'); parts.req = box.querySelector('#req');
+    box.querySelector('.q-copy').addEventListener('click', function () {
+      var done = box.querySelector('.q-done'), ok = function () { done.textContent = 'Copied.'; };
+      // the clipboard API needs a secure page; elsewhere fall back to a selected text box
+      if (navigator.clipboard && window.isSecureContext) navigator.clipboard.writeText(sent).then(ok, old); else old();
+      function old() {
+        var t = document.createElement('textarea'); t.value = sent; t.setAttribute('readonly', ''); t.style.position = 'fixed'; t.style.opacity = '0';
+        document.body.appendChild(t); t.select();
+        try { done.textContent = document.execCommand('copy') ? 'Copied.' : 'Select and copy the details from your email draft.'; } catch (err) { done.textContent = ''; }
+        document.body.removeChild(t);
+      }
+    });
   }
 
   function mail(subject, lines) {
+    sent = 'To: ' + base.replace('mailto:', '') + '\nSubject: ' + subject + '\n\n' + lines.join('\n');
     return base + '?subject=' + encodeURIComponent(subject) + '&body=' + encodeURIComponent(lines.join('\n'));
   }
   function update() {
@@ -375,7 +438,7 @@
     if (!box) return;
     box.hidden = !(ci.value && co.value);
     if (box.hidden) return;
-    parts['q-air'].setAttribute('href', air + '?check_in=' + ci.value + '&check_out=' + co.value + '&adults=' + ad.value + '&guests=' + ad.value);
+    parts['q-air'].setAttribute('href', air + '?check_in=' + ci.value + '&check_out=' + co.value + '&adults=' + ad.value + '&guests=' + ad.value + (dog ? '&pets=1' : ''));
     var q = show ? quote(dog) : null, priced = !!(q && q.total !== undefined);
     parts['q-line'].hidden = parts['q-how'].hidden = !priced; parts['q-msg'].hidden = priced;
     if (parts['q-dog']) parts['q-dog'].hidden = !priced;
@@ -448,10 +511,12 @@
   }
   function set(v) {
     ad.value = String(Math.max(1, Math.min(max, v)));
+    show();  // before the change event: the booking bar copies this button's words (26 Oct: the bar lagged one guest)
     ad.dispatchEvent(new Event('change', { bubbles: true }));
-    show();
   }
+  var opener = null;
   function open() {
+    opener = document.activeElement;
     if (wide.matches) gp.style.left = f.offsetLeft + 'px'; else gp.style.left = '';
     gp.hidden = false; back.hidden = wide.matches;
     document.documentElement.classList.toggle('cal-lock', !wide.matches);
@@ -464,7 +529,7 @@
     gp.hidden = true; back.hidden = true;
     document.documentElement.classList.remove('cal-lock');
     b.setAttribute('aria-expanded', 'false');
-    if (refocus) b.focus({ preventScroll: true });
+    if (refocus) (opener && opener.closest && opener.closest('.bbar') ? opener : b).focus({ preventScroll: true });
   }
   f.addEventListener('click', function (ev) { if (gp.contains(ev.target)) return; ev.preventDefault(); if (gp.hidden) open(); else close(true); });
   minus.addEventListener('click', function () { set(+ad.value - 1); });
@@ -475,6 +540,7 @@
   if (dog) dog.addEventListener('change', show);
   gp.querySelector('.gp-done').addEventListener('click', function () { close(true); });
   gp.addEventListener('keydown', function (ev) { if (ev.key === 'Escape') { ev.stopPropagation(); close(true); } });
+  gp.addEventListener('focusout', function (ev) { var t = ev.relatedTarget; if (t && !gp.contains(t) && !f.contains(t)) close(false); });  // as the calendar
   back.addEventListener('click', function () { close(false); });
   document.addEventListener('click', function (ev) { if (!gp.hidden && !gp.contains(ev.target) && !f.contains(ev.target)) close(false); });
   show();
@@ -620,6 +686,7 @@
     '<button type="button" class="v-next">Next</button><button type="button" class="v-x">Close</button></p>';
   document.body.appendChild(d);
   var img = d.querySelector('img'), cap = d.querySelector('figcaption'), n = d.querySelector('.v-n');
+  img.draggable = false;  // as the steppers: a mouse swipe started a native image drag and never moved the photo (26 Oct audit)
   function show(k) {
     i = (k + order.length) % order.length;
     img.src = 'img/' + order[i] + '.jpg'; img.alt = caps[order[i]];
@@ -644,18 +711,42 @@
   d.querySelector('.v-prev').addEventListener('click', function () { show(i - 1); });
   d.querySelector('.v-next').addEventListener('click', function () { show(i + 1); });
   d.querySelector('.v-x').addEventListener('click', function () { d.close(); });
-  d.addEventListener('click', function (ev) { if (ev.target === d) d.close(); });
+  // a tap on the dark around the photo closes it, as in most viewers; the end of a swipe is not a tap
+  var x0 = null, swiped = false;
+  d.addEventListener('click', function (ev) {
+    if (!swiped && (ev.target === d || ev.target.tagName === 'FIGURE' || ev.target.classList.contains('v-nav'))) d.close();
+    swiped = false;
+  });
   d.addEventListener('keydown', function (ev) {
     if (ev.key === 'ArrowRight') show(i + 1);
     if (ev.key === 'ArrowLeft') show(i - 1);
   });
-  var x0 = null;
-  d.addEventListener('pointerdown', function (ev) { x0 = ev.clientX; });
+  d.addEventListener('pointerdown', function (ev) { x0 = ev.clientX; swiped = false; });
   d.addEventListener('pointerup', function (ev) {
-    if (x0 !== null && Math.abs(ev.clientX - x0) > 50) show(i + (ev.clientX < x0 ? 1 : -1));
+    if (x0 !== null && Math.abs(ev.clientX - x0) > 50) { swiped = true; show(i + (ev.clientX < x0 ? 1 : -1)); }
     x0 = null;
   });
   d.addEventListener('close', function () { img.removeAttribute('src'); if (from) from.focus(); });
+})();
+
+// Back closes an open photo dialog rather than leaving the page, as a phone's back gesture does in an app (26 Oct
+// audit). Each dialog that opens adds a history step; closing it any other way takes that step back off.
+(function () {
+  if (!history.pushState) return;
+  var skip = 0;
+  [].slice.call(document.querySelectorAll('dialog')).forEach(function (d) {
+    var mine = false, byBack = false;
+    new MutationObserver(function () {
+      if (d.open && !mine) { mine = true; history.pushState({ dlg: 1 }, ''); }
+      else if (!d.open && mine) { mine = false; if (byBack) byBack = false; else { skip++; history.back(); } }
+    }).observe(d, { attributes: true, attributeFilter: ['open'] });
+    d.addEventListener('back', function () { byBack = true; d.close(); });
+  });
+  window.addEventListener('popstate', function () {
+    if (skip) { skip--; return; }
+    var top = [].slice.call(document.querySelectorAll('dialog[open]')).pop();  // the viewer comes after the photo list
+    if (top) top.dispatchEvent(new Event('back'));
+  });
 })();
 
 // gentle wheel smoothing on desktop, as 8 of the 13 measured sites do (The PIG and 5 of 8 jury picks use Lenis or
@@ -678,8 +769,24 @@
       if (!t || !t.offsetParent) return;
       ev.preventDefault();
       lenis.scrollTo(t);  // Lenis already honours the page's scroll-padding-top for the header
+      // a native jump moves where Tab goes next; this one must too, or Tab carries on from the menu (26 Oct audit)
+      if (!t.hasAttribute('tabindex')) t.setAttribute('tabindex', '-1');
+      t.focus({ preventScroll: true });
       history.pushState(null, '', a.getAttribute('href'));
     });
   };
   document.head.appendChild(s);
+})();
+// The map keeps its labels readable by scrolling sideways on a phone, which nothing said (26 Oct audit): name it, and
+// let the keyboard scroll it too.
+(function () {
+  var w = document.querySelector('.map-wrap'); if (!w) return;
+  var hint = document.createElement('p'); hint.className = 'map-hint'; hint.textContent = 'Swipe the map sideways to see all of it.';
+  w.parentNode.insertBefore(hint, w.nextSibling);
+  function fit() {
+    var over = w.scrollWidth > w.clientWidth + 1; hint.hidden = !over;
+    if (over) { w.tabIndex = 0; w.setAttribute('role', 'region'); w.setAttribute('aria-label', 'Map, scrolls sideways'); }
+    else { w.removeAttribute('tabindex'); w.removeAttribute('role'); w.removeAttribute('aria-label'); }
+  }
+  fit(); window.addEventListener('resize', fit);
 })();

@@ -134,7 +134,11 @@ h1 { font: 300 var(--s-hero)/1 var(--serif); letter-spacing: -.01em; }
 .q-terms { flex-basis: 100%; max-width: 62ch; }
 .q-act { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 24px; }
 .q-air { color: var(--muted); }
+.q-alt { margin: 0; color: var(--muted); font-size: var(--t-ui); }
+.q-copy { background: none; border: 0; padding: 0; font: inherit; color: var(--ink); text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }
+.q-done { color: var(--ink); }
 .quote:focus { outline: none; }
+[tabindex="-1"]:not(a, button, input, select, textarea):focus { outline: none; }  /* a menu jump focuses its target (site.js); rings belong on controls */
 
 /* date picker (site.js): two months under the booking line on wide screens, a sheet from the bottom on phones.
    Square days with the site's 2 px corners; the chosen nights in the elderberry accent, the nights between on ground-2. */
@@ -324,6 +328,11 @@ blockquote footer { font-size: var(--t-small); color: var(--muted); }
 .grid-h { font: italic 400 var(--s-2)/1.3 var(--serif); color: var(--muted); margin: 32px 0 0; }
 .viewer { border: 0; padding: 0; max-width: 100vw; max-height: 100vh; width: 100vw; height: 100vh; background: var(--ink); color: var(--ground); }
 .viewer::backdrop { background: var(--ink); }
+.viewer { height: 100dvh; max-height: 100dvh; }  /* iOS: 100vh runs under the browser's own bar (26 Oct audit) */
+.viewer figure { touch-action: pan-y pinch-zoom; }  /* a sideways swipe reaches the viewer's own handler */
+/* the page stays put behind an open photo or menu: the wheel moved it 500 px behind the viewer (26 Oct audit) */
+html:has(dialog[open]), html:has(.top.open) { overflow: hidden; }
+html:has(.top.open) .bbar { visibility: hidden; }
 .viewer figure { margin: 0; height: calc(100% - 64px); display: grid; grid-template-rows: minmax(0, 1fr) auto; place-items: center; padding: 16px 16px 0; box-sizing: border-box; }
 .viewer img { max-width: 100%; max-height: 100%; object-fit: contain; }
 .viewer figcaption { color: var(--ground-2); margin: 8px 0 0; }
@@ -339,6 +348,7 @@ blockquote footer { font-size: var(--t-small); color: var(--muted); }
 .where > *, .intro > *, .ch > *, .rooms > *, .hosts > *, .answers > * { min-width: 0; }
 .map-wrap { margin-top: 28px; overflow-x: auto; }
 .map-wrap .map { margin-top: 0; min-width: 560px; }
+.map-hint { margin: 8px 0 0; color: var(--muted); font-size: var(--t-small); }
 .map .sea { fill: none; }
 .map .hatch path { fill: none; stroke: var(--muted); stroke-width: .6; }
 .map .rail { fill: none; stroke: var(--ink); stroke-width: .8; stroke-dasharray: 5 4; }
@@ -389,13 +399,15 @@ blockquote footer { font-size: var(--t-small); color: var(--muted); }
   gap: 12px; padding: 10px var(--g); background: var(--ground); box-shadow: 0 -1px 0 var(--rule); font-size: var(--t-ui); color: var(--muted); }
 .bbar p { margin: 0; }
 .bbar b { color: var(--ink); font-weight: 500; }
-@media (prefers-reduced-motion: no-preference) { .bbar { transition: transform .25s ease; } }
+/* .ready: no slide at load, when the page opens already at the booking line */
+@media (prefers-reduced-motion: no-preference) { .bbar.ready { transition: transform .25s ease; } }
 .bbar.away { transform: translateY(110%); }
 .bb-f { display: block; min-width: 0; padding: 4px 0; background: none; border: 0; border-bottom: 1px solid var(--ink); text-align: left; cursor: pointer;
   color: var(--muted); font: 500 var(--t-ui)/1.3 var(--sans); letter-spacing: .02em; }
 .bb-f span { display: block; color: var(--ink); font: 400 var(--s-1)/1.25 var(--serif); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .bb-f span.empty { color: var(--muted); }
-.bb-f:hover, .bb-f:focus-visible { border-bottom-color: var(--accent); outline: none; }
+.bb-f:hover, .bb-f:focus-visible { border-bottom-color: var(--accent); }
+.bb-f:focus-visible { outline: 1px solid var(--ink); outline-offset: 3px; }  /* a border colour alone is no ring (keyboard check at 1440 px, 26 Oct) */
 .bb-f:focus-visible span { text-decoration: underline; text-decoration-thickness: 1px; }
 .js .bbar .bb-rate { display: none; }
 .bbar.on .bb-fields { display: contents; }
