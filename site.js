@@ -559,6 +559,45 @@
     a.addEventListener('click', function (ev) { ev.preventDefault(); tour(a.getAttribute('href').slice(1), a); });
   });
 
+  // chapter photos step through their area in place (arrows, swipe, arrow keys), as most of the award-listed set
+  // does (K0294); only the guest's own press moves them. The viewer opens on whichever photo is showing.
+  [].slice.call(document.querySelectorAll('figure[data-steps]')).forEach(function (f) {
+    var list = JSON.parse(f.dataset.steps), k = 0, pic = f.querySelector('picture'), src = f.querySelector('source'), im = f.querySelector('img');
+    if (list.length < 2) return;
+    var nav = document.createElement('p');
+    nav.className = 'steps';
+    nav.innerHTML = '<button type="button" class="s-prev" aria-label="Previous photo"></button>' +
+      '<span class="s-n" aria-live="polite"></span><button type="button" class="s-next" aria-label="Next photo"></button>';
+    f.appendChild(nav);
+    var n = nav.querySelector('.s-n');
+    im.draggable = false;  // a mouse swipe would start a native image drag, which never sends pointerup
+    function show(j) {
+      k = (j + list.length) % list.length;
+      var x = list[k], s = x[0];
+      src.srcset = 'img/' + s + '-xs.webp 400w, img/' + s + '-sm.webp 800w, img/' + s + '.webp 1400w' + (x[4] ? ', img/' + s + '-xl.webp 2400w' : '');
+      im.src = 'img/' + s + '-sm.jpg'; im.alt = x[1]; im.width = x[2]; im.height = x[3];
+      n.textContent = (k + 1) + ' / ' + list.length;
+      pic.dataset.v = s;
+      if (pic.getAttribute('role') === 'button') pic.setAttribute('aria-label', 'Open photo: ' + x[1]);
+    }
+    show(0);
+    nav.addEventListener('click', function (ev) {
+      var b = ev.target.closest('button'); ev.stopPropagation();
+      if (b) show(k + (b.classList.contains('s-next') ? 1 : -1));
+    });
+    f.addEventListener('keydown', function (ev) {
+      if (ev.key === 'ArrowRight' || ev.key === 'ArrowLeft') { ev.preventDefault(); show(k + (ev.key === 'ArrowRight' ? 1 : -1)); }
+    });
+    var x0 = null, swiped = false;
+    f.addEventListener('pointerdown', function (ev) { x0 = ev.clientX; swiped = false; });
+    f.addEventListener('pointerup', function (ev) {
+      if (x0 !== null && Math.abs(ev.clientX - x0) > 50) { swiped = true; show(k + (ev.clientX < x0 ? 1 : -1)); }
+      x0 = null;
+    });
+    // a swipe ends in a click on the photo, which would open the viewer
+    f.addEventListener('click', function (ev) { if (swiped) { swiped = false; ev.stopImmediatePropagation(); ev.preventDefault(); } }, true);
+  });
+
   // the viewer: one list of every photo, in the order of the full list
   var order = [];
   [].slice.call((td || document).querySelectorAll('.grid img')).forEach(function (img) {
@@ -587,9 +626,10 @@
   // every photo of the lodge that is in the full list opens here: the hero is left alone
   [].slice.call(document.querySelectorAll('main figure img, .bed-ph img, .tour-show img, .tdlg img')).forEach(function (im) {
     var s = slug(im); if (!s || order.indexOf(s) < 0 || im.closest('.hero')) return;
-    var hold = im.closest('a') || im.closest('figure');
-    if (!hold || hold.dataset.v) return;
-    hold.dataset.v = s; hold.classList.add('zoomable');
+    // a stepping figure holds its arrow buttons, so its picture (not the figure) is what opens the viewer
+    var hold = im.closest('a') || (im.closest('figure[data-steps]') ? im.closest('picture') : im.closest('figure'));
+    if (!hold || hold.classList.contains('zoomable')) return;
+    hold.dataset.v = hold.dataset.v || s; hold.classList.add('zoomable');
     if (hold.tagName !== 'A') { hold.tabIndex = 0; hold.setAttribute('role', 'button'); hold.setAttribute('aria-label', 'Open photo: ' + (caps[s] || im.alt)); }
     hold.addEventListener('click', function (ev) {
       if (ev.ctrlKey || ev.metaKey || ev.shiftKey) return;
@@ -612,4 +652,30 @@
     x0 = null;
   });
   d.addEventListener('close', function () { img.removeAttribute('src'); if (from) from.focus(); });
+})();
+
+// gentle wheel smoothing on desktop, as 8 of the 13 measured sites do (The PIG and 5 of 8 jury picks use Lenis or
+// GSAP; research/compare-v2, K0294). Touch and keyboard scrolling stay native, and reduced motion turns it off.
+(function () {
+  if (!window.matchMedia('(pointer: fine)').matches || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  var s = document.createElement('script');
+  s.src = 'lenis.min.js'; s.async = true;
+  s.onload = function () {
+    var off = window.matchMedia('(prefers-reduced-motion: reduce)');
+    var lenis = new window.Lenis({ autoRaf: true, allowNestedScroll: true,
+      // the calendar, guest panel and dialogs scroll on their own
+      prevent: function (n) { return !!(n.closest && n.closest('dialog, .cal, .gp, .tdlg')); } });
+    off.addEventListener('change', function () { if (off.matches) lenis.destroy(); });
+    // in-page links glide to their section below the fixed header; a link whose own handler took the click is left alone
+    document.addEventListener('click', function (ev) {
+      var a = ev.target.closest && ev.target.closest('a[href^="#"]');
+      if (!a || ev.defaultPrevented || ev.ctrlKey || ev.metaKey || ev.shiftKey) return;
+      var t = document.getElementById(a.getAttribute('href').slice(1));
+      if (!t || !t.offsetParent) return;
+      ev.preventDefault();
+      lenis.scrollTo(t);  // Lenis already honours the page's scroll-padding-top for the header
+      history.pushState(null, '', a.getAttribute('href'));
+    });
+  };
+  document.head.appendChild(s);
 })();

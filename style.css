@@ -474,3 +474,20 @@ html.from-bar .gp { position: fixed; top: auto; bottom: 84px; left: auto !import
   .stay-note { flex-direction: column; justify-content: flex-end; align-items: flex-end; text-align: right; }
 }
 @media print { .top, .bbar, .stay { display: none; } .hero { height: auto; } }
+
+/* Lenis wheel smoothing (site.js, K0294): its own scrolling replaces the CSS smooth scroll while it runs */
+html.lenis, html.lenis body { height: auto; }
+.lenis.lenis-smooth { scroll-behavior: auto !important; }
+.lenis.lenis-stopped { overflow: clip; }
+
+/* chapter photos that step through their area (site.js, K0294) */
+figure[data-steps] { position: relative; touch-action: pan-y; }
+.steps { position: absolute; right: 16px; bottom: 16px; display: flex; align-items: center; gap: 4px; margin: 0;
+  padding: 4px; background: rgba(28, 26, 23, .62); color: #fff; border-radius: 999px; font-size: .8125rem; }
+.steps .s-n { min-width: 4.5ch; text-align: center; font-variant-numeric: tabular-nums; }
+.steps button { width: 40px; height: 40px; border: 0; border-radius: 50%; background: transparent; color: inherit; cursor: pointer; }
+.steps button::before { content: ''; display: block; width: 9px; height: 9px; margin: auto; border: solid currentColor;
+  border-width: 0 0 2px 2px; transform: translateX(2px) rotate(45deg); }
+.steps .s-next::before { transform: translateX(-2px) rotate(-135deg); }
+.steps button:hover { background: rgba(255, 255, 255, .16); }
+.steps button:focus-visible { outline: 2px solid #fff; outline-offset: 1px; }
