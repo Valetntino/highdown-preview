@@ -293,6 +293,8 @@ blockquote footer { font-size: var(--t-small); color: var(--muted); }
 .tour-panel { grid-area: 1 / 1; }
 .js .tour-panel:not(.on) { visibility: hidden; opacity: 0; }
 .tp-big img { aspect-ratio: 3 / 2; object-fit: cover; }
+/* a photo held until the hero loads has no address yet: hide the alt text and broken icon phones draw for it */
+img[data-hold-src] { opacity: 0; }
 .tp-row { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin-top: 12px; }
 .tp-row img { aspect-ratio: 4 / 3; object-fit: cover; }
 .tp-cap { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 6px 24px; margin: 12px 0 0;
