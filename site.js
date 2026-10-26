@@ -657,7 +657,9 @@
       [nx, pv].forEach(function (x) { if (!held[x[0] + '-xs']) { var q = new Image(); q.fetchPriority = 'high'; q.src = 'img/' + x[0] + '-xs.webp'; held[x[0] + '-xs'] = q; } });
       function one(x, then) {
         if (held[x[0]]) { if (then) then(); return; }
-        var p = new Image(); p.fetchPriority = 'high'; p.sizes = src.sizes; p.srcset = set(x); held[x[0]] = p;
+        // low: a press shows the 400 px copy at once anyway, and a photo on the screen comes before one a press away
+        // (after a reload these took the link from the open tour tab's lead photo, 11-14 s on 1 Mbit, 26 Oct)
+        var p = new Image(); p.fetchPriority = 'low'; p.sizes = src.sizes; p.srcset = set(x); held[x[0]] = p;
         if (then) p.onload = p.onerror = then;
       }
       one(nx, function () { one(pv); });

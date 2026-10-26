@@ -289,6 +289,13 @@ blockquote footer { font-size: var(--t-small); color: var(--muted); }
 .tour-list small { font-size: var(--t-ui); }
 .tour-list a.on, .tour-list a:hover { color: var(--ink); }
 .tour-list a.on span { font-style: italic; }
+/* The open tab's name is italic, which is narrower: upright 'Bedrooms and bathrooms' takes two lines at 320 px and
+   italic one, so switching tabs moved the list 29 px and a hovering pointer then picked the next tab, every frame.
+   A hidden copy in the other style shares the name's cell, so the cell is always the taller of the two (A17). */
+.tour-list span { display: grid; }
+.tour-list span > span { grid-area: 1 / 1; }
+.tour-list span > [aria-hidden] { font-style: italic; visibility: hidden; }
+.tour-list a.on span > [aria-hidden] { font-style: normal; }
 .tour-show { display: grid; }
 .tour-panel { grid-area: 1 / 1; }
 .js .tour-panel:not(.on) { visibility: hidden; opacity: 0; }
