@@ -215,6 +215,9 @@
     trig.forEach(function (b) { b.setAttribute('aria-expanded', 'true'); });
     render();
     var b = months.querySelector('button[tabindex="0"]'); if (b) b.focus({ preventScroll: wide.matches });
+    // A picker opened low on a desktop screen hung below it: the screenshot tester clicked Arrive 5 times and saw
+    // nothing (test/visual_arm_e4, 26 Oct 2026), so bring the whole picker into view.
+    if (wide.matches) cal.scrollIntoView({ block: 'nearest' });
   }
   function close(refocus) {
     if (cal.hidden) return;
@@ -454,6 +457,7 @@
     document.documentElement.classList.toggle('cal-lock', !wide.matches);
     b.setAttribute('aria-expanded', 'true');
     (plus.disabled ? minus : plus).focus({ preventScroll: wide.matches });
+    if (wide.matches) gp.scrollIntoView({ block: 'nearest' });  // as the calendar: never open below the screen
   }
   function close(refocus) {
     if (gp.hidden) return;
