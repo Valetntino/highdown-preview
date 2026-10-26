@@ -1,8 +1,10 @@
-// Phone menu: one tap opens the section list, a tap on a link (or outside, or Escape) closes it.
-// The phone booking bar steps aside while the booking form itself is on screen, so it never covers the form.
+// Menu: one tap opens the section list, a tap on a link (or outside, or Escape) closes it. On desktop (1280 px and
+// up) the links sit in the header and the one for the section on screen is marked.
+// The header stays on screen and takes the page's ground once the hero is passed (K0293, 26 Oct 2026).
 (function () {
   var top = document.querySelector('.top'), btn = document.querySelector('.menu-btn');
-  if (top && btn) {
+  if (!top) return;
+  if (btn) {
     function set(open) { top.classList.toggle('open', open); btn.setAttribute('aria-expanded', open ? 'true' : 'false'); }
     btn.addEventListener('click', function () { set(!top.classList.contains('open')); });
     top.querySelectorAll('nav a').forEach(function (a) { a.addEventListener('click', function () { set(false); }); });
@@ -12,8 +14,72 @@
     });
     window.matchMedia('(min-width: 1280px)').addEventListener('change', function () { set(false); });
   }
-  var bar = document.querySelector('.mbar'), book = document.getElementById('book');
-  if (bar && book && 'IntersectionObserver' in window) {
+  var hero = document.querySelector('.hero');
+  function stick() { top.classList.toggle('stuck', window.scrollY > (hero ? hero.offsetHeight - top.offsetHeight : 40)); }
+  window.addEventListener('scroll', stick, { passive: true });
+  window.addEventListener('resize', stick);
+  stick();
+  var links = [].slice.call(top.querySelectorAll('nav a[href^="#"]')), seen = {};
+  if (!links.length || !('IntersectionObserver' in window)) return;
+  var spy = new IntersectionObserver(function (es) {
+    es.forEach(function (x) { seen[x.target.id] = x.isIntersecting; });
+    var cur = links.filter(function (a) { return seen[a.getAttribute('href').slice(1)]; })[0];
+    links.forEach(function (a) { if (a === cur) a.setAttribute('aria-current', 'true'); else a.removeAttribute('aria-current'); });
+  }, { rootMargin: '-45% 0px -50% 0px' });
+  links.forEach(function (a) { var s = document.getElementById(a.getAttribute('href').slice(1)); if (s) spy.observe(s); });
+})();
+// The booking bar (K0293: our own version of The PIG's always-on bar). Its fields show the dates and guests chosen
+// in the booking line and open the same calendar and guests panel, placed just above the bar (html.from-bar), so a
+// guest can choose dates from anywhere on the page. Once both dates are in, the button takes them to the price.
+// It steps aside while the booking line itself is on screen, so it never covers it.
+(function () {
+  var bar = document.querySelector('.bbar'), book = document.getElementById('book');
+  if (!bar || !book) return;
+  var ci = document.getElementById('ci'), co = document.getElementById('co'), ad = document.getElementById('ad');
+  var go = bar.querySelector('.btn'), root = document.documentElement;
+  var real = [ci, co, ad].map(function (el) { return el && el.closest('.f'); });
+  if (real.every(Boolean)) {
+    var box = document.createElement('div');
+    box.className = 'bb-fields';
+    box.innerHTML = ['Arrive', 'Leave', 'Guests'].map(function (t, k) {
+      return '<button type="button" class="bb-f ' + ['bb-ci', 'bb-co', 'bb-ad'][k] + '">' + t + '<span></span></button>';
+    }).join('');
+    bar.insertBefore(box, go);
+    bar.classList.add('on');
+    var f = [].slice.call(box.querySelectorAll('.bb-f'));
+    var shown = function (k) { return k < 2 ? real[k].querySelector('.shown') : real[2].querySelector('.gsel'); };
+    function mirror() {
+      f.forEach(function (b, k) {
+        var s = shown(k), t = s ? s.textContent.trim() : '', none = !t || (s && s.classList.contains('empty'));
+        b.lastChild.textContent = none ? 'Add date' : t;
+        b.lastChild.className = none ? 'empty' : '';
+      });
+      if (window.matchMedia('(max-width: 699px)').matches && ci.value) {
+        f[0].firstChild.textContent = 'Dates';
+        f[0].lastChild.textContent = shown(0).textContent.trim().replace(/^\w+\s/, '') + (co.value ? ' to ' + shown(1).textContent.trim().replace(/^\w+\s/, '') : '');
+      } else f[0].firstChild.textContent = 'Arrive';
+      go.textContent = ci.value && co.value ? 'See your price' : 'Check dates';
+    }
+    [ci, co, ad].forEach(function (el) { el.addEventListener('change', mirror); });
+    var dog = document.getElementById('dog'); if (dog) dog.addEventListener('change', mirror);
+    f.forEach(function (b, k) {
+      b.addEventListener('click', function (ev) {
+        ev.stopPropagation();  // the page's own outside-click handlers would close what this opens
+        root.classList.add('from-bar');
+        real[k].dispatchEvent(new MouseEvent('click', { bubbles: true }));
+      });
+    });
+    go.addEventListener('click', function (ev) {
+      if (ci.value && co.value) return;  // both dates in: the link goes to the booking line and its price
+      ev.preventDefault(); ev.stopPropagation(); f[0].click();
+    });
+    // once a panel is closed, the next one opened from the booking line itself sits under it again
+    new MutationObserver(function () {
+      if (!document.querySelector('.cal:not([hidden])')) { root.classList.remove('from-bar'); mirror(); }
+    }).observe(book, { subtree: true, attributes: true, attributeFilter: ['hidden'] });
+    setTimeout(mirror, 0);
+  }
+  if ('IntersectionObserver' in window) {
     new IntersectionObserver(function (es) {
       var away = es[0].isIntersecting;
       bar.classList.toggle('away', away);
@@ -437,11 +503,72 @@
     box.hidden = false;
   } catch (err) { /* leave it hidden */ }
 })();
-// Photo viewer (F67): a tap on a photo opens it large on the page, with next and previous, instead of leaving the
-// site for the bare file. Keyboard: arrows move, Escape closes (the dialog's own), focus returns to the photo.
+// Photos (K0293, 26 Oct 2026). Pointing at an area in the list swaps the large photo beside it (The PIG's tabbed
+// lists); "All 26 photos" and "See all" open a photo tour, every photo by area in a full-screen sheet, instead of
+// dropping them into the page; and a tap on any photo of the lodge, anywhere on the page, opens it large (F67) with
+// next and previous, arrow keys and a swipe. Escape closes (the dialog's own) and focus returns to the photo.
 (function () {
-  var links = [].slice.call(document.querySelectorAll('.photos figure a'));
-  if (!links.length || !window.HTMLDialogElement) return;
+  if (!window.HTMLDialogElement) return;
+  var all = document.getElementById('all-photos');
+  function slug(img) { var m = img && /img\/(.+?)-sm\.jpg/.exec(img.getAttribute('src') || ''); return m ? m[1] : null; }
+
+  // the area list: hover, focus or tap shows that area
+  var tabs = [].slice.call(document.querySelectorAll('.tour-list a')), panels = [].slice.call(document.querySelectorAll('.tour-panel'));
+  function pick(i) {
+    tabs.forEach(function (a, k) { a.classList.toggle('on', k === i); a.setAttribute('aria-pressed', k === i ? 'true' : 'false'); });
+    panels.forEach(function (p, k) { p.classList.toggle('on', k === i); p.inert = k !== i; });
+  }
+  tabs.forEach(function (a, i) {
+    a.setAttribute('role', 'button');
+    a.addEventListener('mouseenter', function () { pick(i); });
+    a.addEventListener('focus', function () { pick(i); });
+    a.addEventListener('click', function (ev) { ev.preventDefault(); pick(i); });
+  });
+  if (tabs.length) pick(0);
+
+  // the tour: the full list moves into a full-screen sheet with a row of area links at the top
+  var td = null;
+  if (all) {
+    td = document.createElement('dialog');
+    td.className = 'tdlg'; td.setAttribute('aria-label', 'All photos of the lodge');
+    var heads = [].slice.call(all.querySelectorAll('.grid-h'));
+    td.innerHTML = '<div class="td-head"><b>' + heads.length + ' areas</b>' + heads.map(function (h) {
+      return '<a href="#' + h.id + '">' + h.textContent + '</a>';
+    }).join('') + '<button type="button" class="btn line td-x">Close</button></div><div class="td-body"></div>';
+    var body = td.querySelector('.td-body');
+    [].slice.call(all.children).forEach(function (c) { if (c.tagName !== 'SUMMARY') body.appendChild(c); });
+    document.body.appendChild(td);
+    td.querySelector('.td-x').addEventListener('click', function () { td.close(); });
+    td.querySelectorAll('.td-head a').forEach(function (a) {
+      a.addEventListener('click', function (ev) {
+        ev.preventDefault(); var h = document.getElementById(a.getAttribute('href').slice(1));
+        if (h) td.scrollTo({ top: h.offsetTop - td.querySelector('.td-head').offsetHeight - 16 });
+      });
+    });
+    all.querySelector('summary').addEventListener('click', function (ev) { ev.preventDefault(); tour(null, ev.currentTarget); });
+  }
+  var back = null;
+  function tour(id, from) {
+    if (!td) return;
+    back = from; td.showModal(); td.scrollTop = 0;
+    var h = id && document.getElementById(id);
+    if (h) td.scrollTo({ top: h.offsetTop - td.querySelector('.td-head').offsetHeight - 16 });
+  }
+  if (td) td.addEventListener('close', function () { if (back) back.focus(); });
+  document.querySelectorAll('.tp-all').forEach(function (a) {
+    a.addEventListener('click', function (ev) { ev.preventDefault(); tour(a.getAttribute('href').slice(1), a); });
+  });
+
+  // the viewer: one list of every photo, in the order of the full list
+  var order = [];
+  [].slice.call((td || document).querySelectorAll('.grid img')).forEach(function (img) {
+    var s = slug(img); if (s && order.indexOf(s) < 0) order.push(s);
+  });
+  if (!order.length) return;
+  var caps = {};
+  [].slice.call((td || document).querySelectorAll('.grid figure')).forEach(function (f) {
+    caps[slug(f.querySelector('img'))] = (f.querySelector('figcaption') || {}).textContent || '';
+  });
   var d = document.createElement('dialog'), i = 0, from = null;
   d.className = 'viewer';
   d.setAttribute('aria-label', 'Photo viewer');
@@ -451,17 +578,24 @@
   document.body.appendChild(d);
   var img = d.querySelector('img'), cap = d.querySelector('figcaption'), n = d.querySelector('.v-n');
   function show(k) {
-    i = (k + links.length) % links.length;
-    var a = links[i], small = a.querySelector('img');
-    img.src = a.getAttribute('href'); img.alt = small ? small.alt : '';
-    cap.textContent = (a.parentNode.querySelector('figcaption') || {}).textContent || '';
-    n.textContent = (i + 1) + ' of ' + links.length;
+    i = (k + order.length) % order.length;
+    img.src = 'img/' + order[i] + '.jpg'; img.alt = caps[order[i]];
+    cap.textContent = caps[order[i]];
+    n.textContent = (i + 1) + ' of ' + order.length;
   }
-  links.forEach(function (a, k) {
-    a.addEventListener('click', function (ev) {
+  function view(s, el) { from = el; show(order.indexOf(s)); d.showModal(); d.querySelector('.v-next').focus(); }
+  // every photo of the lodge that is in the full list opens here: the hero is left alone
+  [].slice.call(document.querySelectorAll('main figure img, .bed-ph img, .tour-show img, .tdlg img')).forEach(function (im) {
+    var s = slug(im); if (!s || order.indexOf(s) < 0 || im.closest('.hero')) return;
+    var hold = im.closest('a') || im.closest('figure');
+    if (!hold || hold.dataset.v) return;
+    hold.dataset.v = s; hold.classList.add('zoomable');
+    if (hold.tagName !== 'A') { hold.tabIndex = 0; hold.setAttribute('role', 'button'); hold.setAttribute('aria-label', 'Open photo: ' + (caps[s] || im.alt)); }
+    hold.addEventListener('click', function (ev) {
       if (ev.ctrlKey || ev.metaKey || ev.shiftKey) return;
-      ev.preventDefault(); from = a; show(k); d.showModal(); d.querySelector('.v-next').focus();
+      ev.preventDefault(); view(hold.dataset.v, hold);
     });
+    hold.addEventListener('keydown', function (ev) { if (hold.tagName !== 'A' && (ev.key === 'Enter' || ev.key === ' ')) { ev.preventDefault(); view(hold.dataset.v, hold); } });
   });
   d.querySelector('.v-prev').addEventListener('click', function () { show(i - 1); });
   d.querySelector('.v-next').addEventListener('click', function () { show(i + 1); });
@@ -470,6 +604,12 @@
   d.addEventListener('keydown', function (ev) {
     if (ev.key === 'ArrowRight') show(i + 1);
     if (ev.key === 'ArrowLeft') show(i - 1);
+  });
+  var x0 = null;
+  d.addEventListener('pointerdown', function (ev) { x0 = ev.clientX; });
+  d.addEventListener('pointerup', function (ev) {
+    if (x0 !== null && Math.abs(ev.clientX - x0) > 50) show(i + (ev.clientX < x0 ? 1 : -1));
+    x0 = null;
   });
   d.addEventListener('close', function () { img.removeAttribute('src'); if (from) from.focus(); });
 })();
