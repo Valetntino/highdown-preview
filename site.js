@@ -24,7 +24,19 @@
     window.matchMedia('(min-width: 1280px)').addEventListener('change', function () { set(false); });
   }
   var hero = document.querySelector('.hero');
-  function stick() { top.classList.toggle('stuck', window.scrollY > (hero ? hero.offsetHeight - top.offsetHeight : 40)); }
+  // on a short screen (a phone on its side) the header slides away while the guest scrolls down and returns on the
+  // way up: with the booking bar both took 139 of 390 px there (user, 27 Oct: "the top and bottom bars basically
+  // take up most of the screen"). The same on any screen under 900 px tall (upright phones, laptops): K0293's aim is a
+  // header one move away, not one always covering the page. Taller screens keep it on screen.
+  var short = window.matchMedia('(max-height: 899px)'), lastY = window.scrollY;
+  function stick() {
+    var y = window.scrollY, stuck = y > (hero ? hero.offsetHeight - top.offsetHeight : 40);
+    top.classList.toggle('stuck', stuck);
+    if (Math.abs(y - lastY) > 8 || !stuck) {  // a few px of jitter from the browser's own bar is not a direction
+      top.classList.toggle('tuck', short.matches && stuck && y > lastY && !top.classList.contains('open'));
+      lastY = y;
+    }
+  }
   window.addEventListener('scroll', stick, { passive: true });
   window.addEventListener('resize', stick);
   stick();
@@ -625,6 +637,16 @@
     if (h) td.scrollTo({ top: h.offsetTop - td.querySelector('.td-head').offsetHeight - 16 });
   }
   if (td) td.addEventListener('close', function () { if (back) back.focus(); });
+  // a tap before this script ran (a slow link: it runs at about 3.9 s on 1 Mbit) opened the list in place, and the
+  // move into the sheet above then left it open and empty (27 Oct probe): the guest asked for the photos, so show them
+  // But a tour tab tapped that early follows its link into the list, which opens it too: that guest asked for one area,
+  // so show its tab in place (the sheet covered the page and every later tab tap, guest walk landscape 1 Mbit, 27 Oct)
+  if (td && all.open) {
+    all.open = false;
+    var hid = location.hash.slice(1), hit = hid && document.getElementById(hid), ti = tabs.map(function (a) { return a.getAttribute('href'); }).indexOf('#' + hid);
+    if (ti >= 0) { pick(ti); tabs[ti].scrollIntoView({ block: 'center' }); }
+    else tour(hit && td.contains(hit) ? hid : null, all.querySelector('summary'));
+  }
   document.querySelectorAll('.tp-all').forEach(function (a) {
     a.addEventListener('click', function (ev) { ev.preventDefault(); tour(a.getAttribute('href').slice(1), a); });
   });
@@ -714,29 +736,37 @@
     var s = slug(img); if (s && order.indexOf(s) < 0) order.push(s);
   });
   if (!order.length) return;
-  var caps = {}, sets = {}, dims = {};
+  var caps = {}, sets = {}, asets = {}, dims = {};
   [].slice.call((td || document).querySelectorAll('.grid figure')).forEach(function (f) {
     var im = f.querySelector('img'), s = slug(im), so = f.querySelector('source[type="image/webp"]');  // the full set, not the phones' AVIF
     caps[s] = (f.querySelector('figcaption') || {}).textContent || '';
     sets[s] = so ? so.getAttribute('srcset') || so.dataset.hold || '' : '';  // held until the hero arrives (HOLD_JS)
+    var av = f.querySelector('source[type="image/avif"]'), a = av ? av.getAttribute('srcset') || av.dataset.hold || '' : '';
+    asets[s] = a.indexOf('img/' + s + '-xs.avif') >= 0 ? a : '';  // the whole photo's AVIF twins, never a crop's
     dims[s] = [im.width || 4, im.height || 3];
   });
   var d = document.createElement('dialog'), i = 0, from = null;
   d.className = 'viewer';
   d.setAttribute('aria-label', 'Photo viewer');
-  d.innerHTML = '<figure><img alt=""><figcaption></figcaption></figure><p class="v-nav">' +
+  d.innerHTML = '<figure><picture><source type="image/avif"><img alt=""></picture><figcaption></figcaption></figure><p class="v-nav">' +
     '<button type="button" class="v-prev">Previous</button><span class="v-n" aria-live="polite"></span>' +
     '<button type="button" class="v-next">Next</button><button type="button" class="v-x">Close</button></p>';
   document.body.appendChild(d);
-  var img = d.querySelector('img'), cap = d.querySelector('figcaption'), n = d.querySelector('.v-n');
+  var img = d.querySelector('img'), av1 = d.querySelector('source'), cap = d.querySelector('figcaption'), n = d.querySelector('.v-n');
   img.draggable = false;  // as the steppers: a mouse swipe started a native image drag and never moved the photo (26 Oct audit)
   // Each photo shows at once from its 400 px copy (about 30 KB) and sharpens when the size the screen needs
   // arrives; the photos either side are fetched once this one is in. Before (26 Oct, slow 4G): a 320 KB JPEG
   // a step, 1.2-2.4 s blank, and a box 0 px tall while it came, so a step showed no photo at all.
+  var short = window.matchMedia('(max-height: 499px)');  // the bar and caption shrink there (style.css)
   function fit(s) {
     var r = dims[s][0] / dims[s][1];
-    return Math.ceil(Math.min(innerWidth - 32, (innerHeight - 120) * r));
+    return Math.ceil(Math.min(innerWidth - 32, (innerHeight - (short.matches ? 80 : 120)) * r));
   }
+  // AVIF where the 1,400 px twin covers the screen: 20-24% fewer bytes a photo than webp at the same fidelity
+  // (tools/avif_v1.py), which on a 1 Mbit link is the gap between a sharp photo and a blurred one at each step
+  // (27 Oct probe: 10 of 32 sharp after 1.5 s a step). Larger screens keep webp up to 3,200 px.
+  var avif = null;  // unknown until a photo has shown: the browser's own pick between the two says it
+  function useAvif(s) { return !!asets[s] && avif !== false && fit(s) * (window.devicePixelRatio || 1) <= 1470; }
   function box(s) {  // the photo's own shape before it loads, so the small copy fills it
     var w = fit(s); img.style.width = w + 'px'; img.style.height = Math.round(w * dims[s][1] / dims[s][0]) + 'px';
   }
@@ -744,7 +774,7 @@
   var held = {};
   function fetch1(s) {
     if (!s || held[s]) return;
-    var p = new Image(); p.sizes = fit(s) + 'px'; p.srcset = sets[s] || ''; if (!sets[s]) p.src = 'img/' + s + '.jpg'; held[s] = p;
+    var p = new Image(); p.sizes = fit(s) + 'px'; p.srcset = (avif && useAvif(s) ? asets[s] : sets[s]) || ''; if (!sets[s]) p.src = 'img/' + s + '.jpg'; held[s] = p;
   }
   function show(k) {
     i = (k + order.length) % order.length;
@@ -752,7 +782,8 @@
     img.removeAttribute('srcset'); img.removeAttribute('src');  // never leave the last photo up under the new caption
     box(s);
     img.style.backgroundImage = 'url(img/' + s + '-xs.webp)';
-    img.sizes = fit(s) + 'px';
+    img.sizes = av1.sizes = fit(s) + 'px';
+    if (useAvif(s)) av1.srcset = asets[s]; else av1.removeAttribute('srcset');
     if (sets[s]) img.srcset = sets[s]; else img.src = 'img/' + s + '.jpg';
     img.alt = caps[s];
     cap.textContent = caps[s];
@@ -760,6 +791,7 @@
     img.onload = function () {
       if (at !== i) return;
       img.style.backgroundImage = '';
+      if (av1.getAttribute('srcset')) avif = /\.avif(#|$)/.test(img.currentSrc);
       fetch1(order[(i + 1) % order.length]); fetch1(order[(i - 1 + order.length) % order.length]);
     };
   }
@@ -811,7 +843,7 @@
     setTimeout(function () {
       var p = im.parentNode, again = '#r' + (n + 1);
       // a changed address makes the browser fetch it again; the part after # is never sent
-      if (p && p.tagName === 'PICTURE') [].forEach.call(p.querySelectorAll('source'), function (so) {
+      if (p && p.tagName === 'PICTURE') [].forEach.call(p.querySelectorAll('source[srcset]'), function (so) {
         so.srcset = so.getAttribute('srcset').replace(/(\.\w+)(#r\d)?(\s)/g, '$1' + again + '$3');
       });
       if (im.getAttribute('srcset')) im.srcset = im.getAttribute('srcset').replace(/(\.\w+)(#r\d)?(\s)/g, '$1' + again + '$3');

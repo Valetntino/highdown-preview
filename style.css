@@ -343,6 +343,7 @@ img[data-hold-src] { opacity: 0; }
 html:has(dialog[open]), html:has(.top.open) { overflow: hidden; }
 html:has(.top.open) .bbar { visibility: hidden; }
 .viewer figure { margin: 0; height: calc(100% - 64px); display: grid; grid-template-rows: minmax(0, 1fr) auto; place-items: center; padding: 16px 16px 0; box-sizing: border-box; }
+.viewer picture { display: contents; }  /* the photo stays the figure's own row */
 .viewer img { max-width: 100%; max-height: 100%; object-fit: contain; background: center / cover no-repeat; }
 .viewer figcaption { color: var(--ground-2); margin: 8px 0 0; }
 .v-nav { display: flex; justify-content: center; align-items: center; gap: 24px; height: 64px; margin: 0; }
@@ -448,6 +449,7 @@ html.from-bar .gp { position: fixed; top: auto; bottom: 84px; left: auto !import
 }
 @media (max-width: 380px) { .book { grid-template-columns: 1fr; } .book .f:nth-of-type(3), .book .btn { grid-column: auto; } }
 
+
 /* wide screens: the 12-column layouts */
 @media (min-width: 700px) {
   .bbar { justify-content: center; gap: 28px; padding: 12px var(--g); }
@@ -517,6 +519,36 @@ html.from-bar .gp { position: fixed; top: auto; bottom: 84px; left: auto !import
   .stay .book { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 20px 16px; }
   .stay .book .btn { grid-column: 1 / -1; }
 }
+/* short screens: a phone on its side is 320-430 px tall, while a tablet on its side or the smallest laptop is 600+.
+   There the header (64 px) and the booking bar (75 px) took 36% of an 844 x 390 screen before Chrome's own bar
+   (user, 27 Oct: "unusable"). Each bar becomes one 44-48 px row, and the header slides away while scrolling down
+   (site.js), so reading leaves 89% of the screen to the page; controls stay 36-40 px, above WCAG 2.2's 24 px. */
+/* a short laptop (1366 x 768 leaves about 625 px of page) gets the slim bars too, both kept on screen as K0293 asked:
+   at full height they took 139 px, 22% of it (guest walk laptop1366, 27 Oct) */
+@media (max-height: 499px), (min-width: 1000px) and (max-height: 799px) {
+  .top, .top.stuck { padding-top: 4px; padding-bottom: 4px; }
+  .top .btn { min-height: 36px; padding-top: 0; padding-bottom: 0; }
+  .menu-btn { padding: 6px 0; }
+  .bbar { padding-top: 4px; padding-bottom: 4px; }
+  .bb-f { display: flex; align-items: baseline; gap: 8px; padding: 2px 0; }
+  .bbar .btn { min-height: 36px; padding-top: 0; padding-bottom: 0; }
+  html.from-bar .cal:not(.gp), html.from-bar .gp { bottom: 48px; max-height: calc(100dvh - 56px); overflow-y: auto; }
+}
+@media (max-height: 499px) {
+  .top.open nav { padding-top: 60px; padding-bottom: 16px; gap: 0; }
+  .top.open nav a { font-size: var(--s-2); }
+  /* the sheet's area links wrapped to 3 rows, 97 px of 320-342 (27 Oct probe): one row that scrolls sideways */
+  .td-head { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; padding-top: 4px; padding-bottom: 4px; }
+  .td-head .td-x { position: sticky; right: 0; flex: none; min-height: 36px; background: var(--ground); }
+  .viewer figure { height: calc(100% - 44px); padding-top: 8px; }
+  .viewer figcaption { margin-top: 4px; }
+  .v-nav { height: 44px; }
+}
+/* under 900 px tall (phones either way up, laptops) the header slides away while reading down and is back on the
+   first move up: the bars took 16% of an upright phone and 14% of a 1366 x 768 laptop while reading, the header
+   alone 44-64 px of it (27 Oct). K0293's aim, a header and booking bar always one move away, still holds. */
+@media (max-height: 899px) { .top.tuck { transform: translateY(-100%); } }
+@media (max-height: 899px) and (prefers-reduced-motion: no-preference) { .top { transition: transform .25s ease, background-color .3s ease, color .3s ease; } }
 @media print { .top, .bbar, .stay { display: none; } .hero { height: auto; } }
 
 /* Lenis wheel smoothing (site.js, K0294): its own scrolling replaces the CSS smooth scroll while it runs */
