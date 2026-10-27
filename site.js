@@ -673,7 +673,9 @@
       var nx = list[(k + 1) % list.length], pv = list[(k - 1 + list.length) % list.length];
       // the 400 px copies either side first (about 30 KB each): a press then shows a photo at once even when the
       // page's released photos fill a slow link (Next took 3.2 s behind them, 26 Oct), and the full one follows
-      [nx, pv].forEach(function (x) { if (!held[x[0] + '-xs']) { var q = new Image(); q.fetchPriority = 'high'; q.src = 'img/' + x[0] + '-xs.webp'; held[x[0] + '-xs'] = q; } });
+      // once the guest has pressed, every step's small copy (11-15 here, about 0.4 MB): quick presses outran the
+      // one-ahead fetch on a slow link (27 Oct, the viewer's same fault: "you don't get not loaded")
+      (stepped ? [nx, pv].concat(list) : [nx, pv]).forEach(function (x) { if (!held[x[0] + '-xs']) { var q = new Image(); q.fetchPriority = 'high'; q.src = 'img/' + x[0] + '-xs.webp'; held[x[0] + '-xs'] = q; } });
       function one(x, then) {
         if (held[x[0]]) { if (then) then(); return; }
         // low: a press shows the 400 px copy at once anyway, and a photo on the screen comes before one a press away
@@ -700,8 +702,9 @@
       n.textContent = (k + 1) + ' / ' + list.length;
       pic.dataset.v = s;
       if (pic.getAttribute('role') === 'button') pic.setAttribute('aria-label', 'Open photo: ' + x[1]);
-      ahead();
+      stepped = true; ahead();
     }
+    var stepped = false;
     // the page's own first photo stays as written (rewriting it at load restarted its download)
     n.textContent = '1 / ' + list.length; pic.dataset.v = list[0][0];
     if ('IntersectionObserver' in window) {
@@ -758,8 +761,13 @@
   // arrives; the photos either side are fetched once this one is in. Before (26 Oct, slow 4G): a 320 KB JPEG
   // a step, 1.2-2.4 s blank, and a box 0 px tall while it came, so a step showed no photo at all.
   var short = window.matchMedia('(max-height: 499px)');  // the bar and caption shrink there (style.css)
+  // A phone on its side: the photo takes the whole height and the controls and caption sit in the dark either side,
+  // SIDE px each. The band under the photo took 80 of 360 px, so a 4:3 photo filled 34% of the screen and an upright
+  // one 18% (user 27 Oct: "fills basically none of the screen"). 96 px holds the wider button, "Previous".
+  var side = window.matchMedia('(max-height: 499px) and (orientation: landscape)'), SIDE = 96;
   function fit(s) {
     var r = dims[s][0] / dims[s][1];
+    if (side.matches) return Math.ceil(Math.min(innerWidth - 2 * SIDE, innerHeight * r));
     return Math.ceil(Math.min(innerWidth - 32, (innerHeight - (short.matches ? 80 : 120)) * r));
   }
   // AVIF where the 1,400 px twin covers the screen: 20-24% fewer bytes a photo than webp at the same fidelity
@@ -769,6 +777,7 @@
   function useAvif(s) { return !!asets[s] && avif !== false && fit(s) * (window.devicePixelRatio || 1) <= 1470; }
   function box(s) {  // the photo's own shape before it loads, so the small copy fills it
     var w = fit(s); img.style.width = w + 'px'; img.style.height = Math.round(w * dims[s][1] / dims[s][0]) + 'px';
+    d.style.setProperty('--pw', w + 'px');  // the caption's band beside the photo (style.css)
   }
   addEventListener('resize', function () { if (d.open) { box(order[i]); img.sizes = fit(order[i]) + 'px'; } });
   var held = {};
@@ -776,26 +785,69 @@
     if (!s || held[s]) return;
     var p = new Image(); p.sizes = fit(s) + 'px'; p.srcset = (avif && useAvif(s) ? asets[s] : sets[s]) || ''; if (!sets[s]) p.src = 'img/' + s + '.jpg'; held[s] = p;
   }
-  function show(k) {
+  function show(k, now) {
+    dir = k < i ? -1 : 1;
     i = (k + order.length) % order.length;
-    var s = order[i], at = i;
-    img.removeAttribute('srcset'); img.removeAttribute('src');  // never leave the last photo up under the new caption
+    var s = order[i], at = i, p = held[s];
+    img.removeAttribute('srcset'); av1.removeAttribute('srcset');  // never leave the last photo up under the new caption
     box(s);
-    img.style.backgroundImage = 'url(img/' + s + '-xs.webp)';
+    // the small copy is the photo until the full one is asked for: an img with no address would draw its alt text
+    img.style.backgroundImage = 'url(img/' + s + '-xs.webp)'; img.src = 'img/' + s + '-xs.webp';
     img.sizes = av1.sizes = fit(s) + 'px';
-    if (useAvif(s)) av1.srcset = asets[s]; else av1.removeAttribute('srcset');
-    if (sets[s]) img.srcset = sets[s]; else img.src = 'img/' + s + '.jpg';
+    function sharp() {
+      if (at !== i) return;
+      want = s;
+      if (useAvif(s)) av1.srcset = asets[s];
+      if (sets[s]) img.srcset = sets[s]; else img.src = 'img/' + s + '.jpg';
+    }
+    clearTimeout(late); want = null;
+    if (now || (p && p.complete && p.naturalWidth)) sharp(); else late = setTimeout(sharp, LOOK_MS);
     img.alt = caps[s];
     cap.textContent = caps[s];
     n.textContent = (i + 1) + ' of ' + order.length;
+    img.onerror = function () { if (at === i) { want = null; pump(); } };
     img.onload = function () {
-      if (at !== i) return;
-      img.style.backgroundImage = '';
+      if (at !== i || /-xs\.webp$/.test(img.currentSrc)) return;
+      img.style.backgroundImage = ''; want = null;
       if (av1.getAttribute('srcset')) avif = /\.avif(#|$)/.test(img.currentSrc);
-      fetch1(order[(i + 1) % order.length]); fetch1(order[(i - 1 + order.length) % order.length]);
+      pump();
     };
+    pump();
   }
-  function view(s, el) { from = el; show(order.indexOf(s)); d.showModal(); d.querySelector('.v-next').focus(); }
+  // Opening the viewer says the guest will flick through. Every small copy (about 32 KB) is fetched outward from the
+  // photo showing, 3 at a time so they land in the order they are reached, then every full copy the same way once the
+  // first full one has said AVIF or webp. A step's own full copy is asked for only after LOOK_MS on it (unless it is
+  // in already): above a flick (0.6 s), so flicking spends the link on small copies, not on 190 KB copies left behind.
+  // Before (user's phone, 27 Oct: "all should be loaded so when you are flicking through you don't get not loaded"):
+  // the two either side once the current one had loaded; flicking on 1 Mbit showed 3-7 of 32 steps (guest walk).
+  // While the full copy of the photo the guest stopped on is coming, only small copies are fetched beside it: on a
+  // 1 Mbit link it shared the link with 3 full copies and no photo looked at for 1.5 s came in sharp.
+  var busy = 0, late = null, LOOK_MS = 700, dir = 1, want = null;
+  // the nearest photo whose copy has not been asked for, two the way the guest is going for each one behind: either
+  // way alike gave the photos behind half a 1 Mbit link and flicking on showed 22-25 of 32 steps
+  function near(tag) {
+    function at(j) { var s = order[(j % order.length + order.length) % order.length]; return held[s + tag] ? null : s; }
+    for (var k = 1; k <= order.length; k++) {
+      var s = at(i + dir * (2 * k - 1)) || at(i + dir * 2 * k) || at(i - dir * k);
+      if (s) return s;
+    }
+    return null;
+  }
+  function pump() {
+    while (busy < 3 && d.open) {
+      var s = near('-xs'), q;
+      if (s) { q = held[s + '-xs'] = new Image(); q.src = 'img/' + s + '-xs.webp'; }
+      else if (avif !== null && !want && (s = near(''))) { fetch1(s); q = held[s]; }
+      else return;
+      busy++; q.onload = q.onerror = function () { busy--; pump(); };
+    }
+  }
+  function view(s, el) {
+    from = el; show(order.indexOf(s), true); d.showModal(); d.querySelector('.v-next').focus();
+    // on a touch phone on its side, also hide the browser's own bars where the browser allows it (Android Chrome;
+    // iPhone Safari has no fullscreen for a page element): its address bar takes a further 56 px or so of height
+    if (side.matches && matchMedia('(pointer: coarse)').matches && d.requestFullscreen) d.requestFullscreen({ navigationUI: 'hide' }).catch(function () {});
+  }
   // every photo of the lodge that is in the full list opens here: the hero is left alone
   [].slice.call(document.querySelectorAll('main figure img, .bed-ph img, .tour-show img, .tdlg img')).forEach(function (im) {
     var s = slug(im); if (!s || order.indexOf(s) < 0 || im.closest('.hero')) return;
@@ -828,7 +880,11 @@
     if (x0 !== null && Math.abs(ev.clientX - x0) > 50) { swiped = true; show(i + (ev.clientX < x0 ? 1 : -1)); }
     x0 = null;
   });
-  d.addEventListener('close', function () { img.removeAttribute('srcset'); img.removeAttribute('src'); if (from) from.focus(); });
+  d.addEventListener('close', function () {
+    img.removeAttribute('srcset'); img.removeAttribute('src');
+    if (document.fullscreenElement === d) document.exitFullscreen().catch(function () {});
+    if (from) from.focus();
+  });
 })();
 
 // A photo whose download fails (a phone dropping signal mid-scroll) is asked for again, up to 3 times, instead of

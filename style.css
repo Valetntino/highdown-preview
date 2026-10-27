@@ -344,6 +344,7 @@ html:has(dialog[open]), html:has(.top.open) { overflow: hidden; }
 html:has(.top.open) .bbar { visibility: hidden; }
 .viewer figure { margin: 0; height: calc(100% - 64px); display: grid; grid-template-rows: minmax(0, 1fr) auto; place-items: center; padding: 16px 16px 0; box-sizing: border-box; }
 .viewer picture { display: contents; }  /* the photo stays the figure's own row */
+.viewer source { display: none; }  /* else the empty source took the photo's grid row and pushed the photo below it (27 Oct: off a landscape screen) */
 .viewer img { max-width: 100%; max-height: 100%; object-fit: contain; background: center / cover no-repeat; }
 .viewer figcaption { color: var(--ground-2); margin: 8px 0 0; }
 .v-nav { display: flex; justify-content: center; align-items: center; gap: 24px; height: 64px; margin: 0; }
@@ -543,6 +544,18 @@ html.from-bar .gp { position: fixed; top: auto; bottom: 84px; left: auto !import
   .viewer figure { height: calc(100% - 44px); padding-top: 8px; }
   .viewer figcaption { margin-top: 4px; }
   .v-nav { height: 44px; }
+}
+/* a phone on its side: the photo takes the whole height, the controls and caption sit in the dark either side
+   (site.js SIDE). The band under the photo took 80 of 360 px; a 4:3 photo filled 34% of the screen (user 27 Oct). */
+@media (max-height: 499px) and (orientation: landscape) {
+  .viewer figure { height: 100%; padding: 0; display: flex; align-items: center; justify-content: center; }
+  .viewer figcaption { position: absolute; left: 12px; bottom: 10px; width: max(72px, calc((100vw - var(--pw, 60vw)) / 2 - 24px)); margin: 0; font-size: var(--t-ui); line-height: 1.35; }
+  .v-nav { position: absolute; inset: 0; height: auto; pointer-events: none; }
+  .v-nav > * { position: absolute; pointer-events: auto; }
+  .v-prev { left: 12px; top: 50%; transform: translateY(-50%); }
+  .v-next { right: 12px; top: 50%; transform: translateY(-50%); }
+  .v-x { right: 12px; top: 6px; }
+  .v-n { left: 12px; top: 14px; }
 }
 /* under 900 px tall (phones either way up, laptops) the header slides away while reading down and is back on the
    first move up: the bars took 16% of an upright phone and 14% of a 1366 x 768 laptop while reading, the header
