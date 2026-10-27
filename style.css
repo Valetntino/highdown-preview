@@ -580,3 +580,22 @@ figure[data-steps] { position: relative; touch-action: pan-y; }
 .steps .s-next::before { transform: translateX(-2px) rotate(-135deg); }
 .steps button:hover { background: rgba(255, 255, 255, .16); }
 .steps button:focus-visible { outline: 2px solid #fff; outline-offset: 1px; }
+
+/* area guide (area.html, 27 Oct 2026): one reading column of the lodge page's lists; the header starts on the ground
+   colour because there is no photo under it */
+.ag-top { grid-template-columns: 1fr auto 1fr; }
+.ag-back { justify-self: start; font-size: var(--t-ui); text-decoration: none; padding: 10px 0; }
+.ag-back::before { content: "\2190\00a0"; }
+.ag-main { max-width: 760px; margin: 0 auto; padding: 120px var(--g) var(--sec); }
+.ag-head h1 { font-size: var(--s-4); margin-bottom: 20px; }
+.ag-head p { color: var(--muted); max-width: 60ch; }
+.ag-toc { display: flex; flex-wrap: wrap; gap: 8px 20px; margin-top: 24px; font-size: var(--t-ui); }
+.ag { margin-top: 72px; scroll-margin-top: 90px; }
+.ag .list > div { grid-template-columns: minmax(0, 1fr) minmax(0, 2.2fr); }
+.ag-src { margin-top: 14px; font-size: var(--t-ui); color: var(--muted); }
+.ag-end { margin-top: 72px; }
+@media (max-width: 559px) {
+  .ag .list > div { grid-template-columns: 1fr; }
+  .ag-top .brand span { display: none; }
+}
+@media (min-width: 700px) { .top.ag-top .ag-back { grid-column: 3; grid-row: 1; justify-self: end; } }  /* beside Book, as Menu sits on the lodge page */
