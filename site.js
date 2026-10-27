@@ -632,7 +632,7 @@
   // chapter photos step through their area in place (arrows, swipe, arrow keys), as most of the award-listed set
   // does (K0294); only the guest's own press moves them. The viewer opens on whichever photo is showing.
   [].slice.call(document.querySelectorAll('figure[data-steps]')).forEach(function (f) {
-    var list = JSON.parse(f.dataset.steps), k = 0, pic = f.querySelector('picture'), src = f.querySelector('source'), im = f.querySelector('img');
+    var list = JSON.parse(f.dataset.steps), k = 0, pic = f.querySelector('picture'), src = f.querySelector('source[type="image/webp"]'), im = f.querySelector('img');
     if (list.length < 2) return;
     var nav = document.createElement('p');
     nav.className = 'steps';
@@ -662,6 +662,9 @@
       one(nx, function () { one(pv); });
     }
     function show(j) {
+      // the steps are webp: a press drops the phone's AVIF source, which would otherwise keep showing photo 1 (only
+      // here: the fetch-ahead ran set() before any press and the first photo fell back to webp, 27 Oct)
+      [].forEach.call(pic.querySelectorAll('source[type="image/avif"]'), function (a) { a.remove(); });
       k = (j + list.length) % list.length;
       var x = list[k], s = x[0], p = held[s];
       // not fetched yet: its 400 px copy (about 30 KB) shows at once and the full one replaces it when it lands
@@ -713,7 +716,7 @@
   if (!order.length) return;
   var caps = {}, sets = {}, dims = {};
   [].slice.call((td || document).querySelectorAll('.grid figure')).forEach(function (f) {
-    var im = f.querySelector('img'), s = slug(im), so = f.querySelector('source');
+    var im = f.querySelector('img'), s = slug(im), so = f.querySelector('source[type="image/webp"]');  // the full set, not the phones' AVIF
     caps[s] = (f.querySelector('figcaption') || {}).textContent || '';
     sets[s] = so ? so.getAttribute('srcset') || so.dataset.hold || '' : '';  // held until the hero arrives (HOLD_JS)
     dims[s] = [im.width || 4, im.height || 3];
