@@ -330,6 +330,15 @@ img[data-hold-src] { opacity: 0; }
   background: var(--ground); box-shadow: 0 1px 0 var(--rule); font-size: var(--t-ui); }
 .td-head a { white-space: nowrap; }
 .td-x { margin-left: auto; }
+/* phones: one row that scrolls sideways, Close pinned at its end (27 Oct, user: "top bit too big"; it wrapped to 3 rows,
+   about 170 of 812 px) */
+@media (max-width: 699px) {
+  .td-head { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; padding-top: 8px; padding-bottom: 8px; gap: 20px; }
+  .td-head::-webkit-scrollbar { display: none; }
+  .td-head > b { display: none; }
+  .td-head .td-x { position: sticky; right: 0; flex: none; min-height: 40px; padding: 0 16px; background: var(--ground);
+    box-shadow: -18px 0 14px -4px var(--ground); }
+}
 .td-body { max-width: var(--max); margin: 0 auto; padding: 0 var(--g) 60px; }
 .td-body .grid-h { margin-top: 40px; }
 .all .grid { margin-top: 14px; }
@@ -352,37 +361,101 @@ html:has(.top.open) .bbar { visibility: hidden; }
 .v-nav button:focus-visible { outline: 1px solid var(--ground); outline-offset: 3px; }
 .v-n { font-size: var(--t-ui); color: var(--ground-2); }
 
-/* where: the drawn map and the times */
-.where { display: grid; gap: 48px 72px; }
+/* where (27 Oct 2026 redesign): a real map drawn from OpenStreetMap (src/map.py, its own look in src/map.css) with
+   each walk and drive on it, and the times beside it. site.js adds the On foot / By car switch, the dots and labels,
+   the scale and the route highlights; without it the map is a plain image and both lists show. */
+.where { display: grid; gap: 40px 72px; }
 .where-head p { max-width: 52ch; }
-.map { display: block; width: 100%; height: auto; margin-top: 28px; font-family: var(--sans); }
 .where > *, .intro > *, .ch > *, .rooms > *, .hosts > *, .answers > * { min-width: 0; }
-.map-wrap { margin-top: 28px; overflow-x: auto; }
-.map-wrap .map { margin-top: 0; min-width: 560px; }
-.map-hint { margin: 8px 0 0; color: var(--muted); font-size: var(--t-small); }
-.map .sea { fill: none; }
-.map .hatch path { fill: none; stroke: var(--muted); stroke-width: .6; }
-.map .rail { fill: none; stroke: var(--ink); stroke-width: .8; stroke-dasharray: 5 4; }
-.map .rail-t { fill: var(--muted); }
-.map .coast { fill: none; stroke: var(--ink); stroke-width: 1; }
-.map .downs path { fill: none; stroke: var(--muted); stroke-width: .8; }
-.map text { font: 400 var(--s-1) var(--serif); letter-spacing: .02em; fill: var(--ink); }
-.map .area { font: italic 400 var(--s-1) var(--serif); letter-spacing: .02em; text-transform: none; fill: var(--muted); }
-.map .pt { fill: var(--ink); }
-.map .lodge { fill: var(--accent); }
-.map .lodge-ring { fill: none; stroke: var(--accent); stroke-width: .8; }
-.map .lodge-t { font: italic 400 var(--s-1) var(--serif); letter-spacing: 0; text-transform: none; fill: var(--accent); }
-.times { display: grid; gap: 40px; align-content: start; }
-.times .list dt { font-size: var(--s-2); }
-.times .list > div { grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr); }
+.mapbox { position: relative; overflow: hidden; aspect-ratio: 10 / 11; margin: 0 calc(-1 * var(--g)); background: #DEDFCB; }
+.mapbox > svg.map, .mapbox > img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.mapbox > svg.map { opacity: 0; transition: opacity .5s ease; }
+.mapbox.ready > svg.map { opacity: 1; }
+.map-credit { position: absolute; right: 0; bottom: 0; z-index: 2; margin: 0; padding: 2px 6px; font-size: 11px; line-height: 1.4;
+  background: rgba(237, 232, 224, .85); color: var(--muted); }
+.map-mode { position: absolute; top: 12px; left: 12px; z-index: 3; display: flex; background: var(--ground); border: 1px solid var(--ink); }
+.map-mode button { font: 500 var(--t-ui)/1 var(--sans); letter-spacing: .02em; min-height: 40px; padding: 0 16px; border: 0;
+  background: none; color: var(--ink); cursor: pointer; }
+.map-mode button[aria-pressed="true"] { background: var(--ink); color: var(--ground); }
+.map-mode button:focus-visible { outline-offset: -4px; outline-color: currentColor; }
+.map-scale { position: absolute; left: 12px; bottom: 10px; z-index: 2; font: 500 11px/1 var(--sans); color: var(--muted); }
+.map-scale i { display: block; height: 5px; margin-bottom: 4px; border: 1px solid var(--muted); border-top: 0; }
+.pins { position: absolute; inset: 0; z-index: 1; pointer-events: none; }
+.pin { position: absolute; left: 0; top: 0; pointer-events: auto; cursor: pointer; opacity: 0; transition: opacity .35s ease; }
+.pins.in .pin, .pin.lodge { opacity: 1; }
+.pin[hidden] { display: none; }
+.pin b { position: absolute; left: -5px; top: -5px; width: 10px; height: 10px; border-radius: 50%; background: var(--accent);
+  box-shadow: 0 0 0 2px var(--ground); transition: transform .2s ease; }
+.pin em { position: absolute; top: -8px; font: 500 12px/16px var(--sans); letter-spacing: .02em; color: var(--ink); white-space: nowrap;
+  text-shadow: 0 0 2px var(--ground), 0 0 2px var(--ground), 0 0 4px var(--ground), 0 0 6px var(--ground); }
+.pin s { display: none; text-decoration: none; }
+.pin.s-r em { left: 11px; }
+.pin.s-l em { right: 11px; }
+.pin.s-t em { top: auto; bottom: 9px; left: 0; transform: translateX(-50%); }
+.pin.s-b em { top: 9px; left: 0; transform: translateX(-50%); }
+.pin.on b { transform: scale(1.5); }
+.pin.on em { color: var(--accent); }
+.mapbox.hl .pin:not(.on):not(.lodge) { opacity: .35; }
+.pin.edge b { display: none; }
+.pin.edge em { left: 0; right: auto; top: 0; bottom: auto; transform: translate(-50%, -50%); display: flex; align-items: center; gap: 6px;
+  padding: 5px 9px 5px 7px; background: var(--ground); border: 1px solid var(--rule); text-shadow: none; }
+.pin.edge s { display: block; color: var(--accent); }
+.pin.lodge { cursor: default; z-index: 1; }
+.pin.lodge b { left: -8px; top: -8px; width: 16px; height: 16px; background: var(--ink); box-shadow: 0 0 0 3px var(--ground); }
+.pin.lodge em { right: 15px; top: -11px; font: italic 400 19px/22px var(--serif); letter-spacing: 0; }
+.pin i { display: none; }
+@media (prefers-reduced-motion: no-preference) {
+  /* the lodge marks itself with three slow rings when the map arrives, then stays still */
+  .pins.in .pin.lodge i { display: block; position: absolute; left: -8px; top: -8px; width: 16px; height: 16px; border-radius: 50%;
+    border: 1px solid var(--ink); animation: ring 2.2s ease-out 3; opacity: 0; }
+  @keyframes ring { from { transform: scale(1); opacity: .7; } to { transform: scale(3.2); opacity: 0; } }
+}
+.times { display: grid; gap: 36px; align-content: start; }
+.tl h3 { margin-bottom: 6px; }
+.tl h3 span { font: 400 var(--t-small)/1.4 var(--sans); color: var(--muted); margin-left: 6px; }
+.tl ol { list-style: none; margin: 0; padding: 0; border-bottom: 1px solid var(--rule); }
+.tl li { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 16px; align-items: baseline; padding: 12px 0; border-top: 1px solid var(--rule); }
+.times.live .tl:not(.show) { display: none; }
+.times.live .tl li { display: block; padding: 0; }
+.tl .tr { width: 100%; display: grid; grid-template-columns: 8px minmax(0, 1fr) auto; gap: 14px; align-items: baseline; padding: 12px 0;
+  border: 0; background: none; color: inherit; font: inherit; text-align: left; cursor: pointer; }
+.tl .tr::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--accent); opacity: .55; align-self: center;
+  transition: transform .2s ease, opacity .2s ease; }
+.tn { font: 400 var(--s-1)/1.3 var(--serif); }
+.tt { font: 500 var(--t-ui)/1.3 var(--sans); letter-spacing: .02em; white-space: nowrap; color: var(--muted); font-variant-numeric: tabular-nums; }
+.tl li.on .tn { color: var(--accent); }
+.tl li.on .tr::before { opacity: 1; transform: scale(1.4); }
+@media (hover: hover) { .tl .tr:hover .tn { color: var(--accent); } }
+.tl-more { margin: 0; font-size: var(--t-small); }
 
-/* reviews */
+/* reviews: the score, the lead quote, then guests' words by why they came (site.js: one group at a time) */
 .words { text-align: center; }
-.words .big { max-width: 920px; margin: 0 auto 64px; }
+.score { display: flex; flex-direction: column; align-items: center; gap: 10px; margin: 0 0 18px; }
+.score b { font: 300 clamp(76px, 9vw, 128px)/1 var(--serif); font-variant-numeric: lining-nums; }
+.score span { font-size: var(--t-small); color: var(--muted); }
+.badges { display: flex; justify-content: center; margin: 0 0 64px; font: 500 var(--t-ui)/1.4 var(--sans); letter-spacing: .02em; }
+.badges span { padding: 0 14px; }
+.badges span + span { border-left: 1px solid var(--rule); }
+.words .big { max-width: 920px; margin: 0 auto 72px; }
 .words .big p { font: 300 var(--s-3)/1.35 var(--serif); }
-.words .more { display: grid; gap: 40px 56px; text-align: left; max-width: 1100px; margin: 0 auto; }
-.words .more p { font: 400 italic var(--s-1)/1.5 var(--serif); }
-.words .sub { margin-top: 48px; color: var(--muted); font-size: var(--t-small); }
+.chips { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; max-width: 900px; margin: 0 auto 40px; }
+.chips button { font: 500 var(--t-ui)/1 var(--sans); letter-spacing: .02em; min-height: 40px; padding: 0 16px; border: 1px solid var(--rule);
+  background: none; color: var(--ink); cursor: pointer; }
+.chips button:hover { border-color: var(--ink); }
+.chips button[aria-pressed="true"] { border-color: var(--ink); background: var(--ink); color: var(--ground); }
+.theme { max-width: 1100px; margin: 0 auto; text-align: left; }
+.theme h3 { font: italic 400 var(--s-2)/1.3 var(--serif); color: var(--accent); margin: 40px 0 16px; }
+.themes.live .theme h3 { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+.th-q { display: grid; gap: 24px; }
+.th-q blockquote { padding-top: 16px; border-top: 1px solid var(--rule); }
+.th-q p { font: 400 italic var(--s-1)/1.5 var(--serif); margin-bottom: 8px; }
+@media (prefers-reduced-motion: no-preference) {
+  .themes.live .theme:not([hidden]) blockquote { animation: th-in .5s ease both; }
+  .themes.live .theme blockquote:nth-child(2) { animation-delay: .07s; }
+  .themes.live .theme blockquote:nth-child(3) { animation-delay: .14s; }
+  @keyframes th-in { from { opacity: 0; transform: translateY(10px); } }
+}
+.words .sub { margin-top: 48px; font-size: var(--t-small); }
 
 /* before you book */
 .answers { display: grid; gap: 48px 72px; padding-bottom: var(--sec); }
@@ -393,17 +466,30 @@ html:has(.top.open) .bbar { visibility: hidden; }
 .qa > div { padding: 16px 0; border-top: 1px solid var(--rule); }
 .qa dt { font: 400 var(--s-2)/1.3 var(--serif); margin-bottom: 4px; }
 .qa dd { margin: 0; color: var(--muted); }
+.ask { margin-top: 8px; }
+.ask p:first-child { font: italic 400 var(--s-2)/1.3 var(--serif); color: var(--muted); margin-bottom: 8px; }
+.ask a { line-height: 2; }
 
-/* footer */
-.foot { background: var(--ink); color: var(--ground); text-align: center; padding: 80px var(--g) 110px; font-size: var(--t-ui); }
+/* the close: one last photo, then the footer with Check dates and four short columns */
+.closing img { aspect-ratio: 4 / 3; object-fit: cover; }
+.foot { background: var(--ink); color: var(--ground); padding: 72px var(--g) 110px; font-size: var(--t-small); }
 .foot p { margin: 0 0 8px; }
 .foot a { text-decoration-color: rgba(237, 232, 224, .35); }
+.foot-cta { text-align: center; }
 .foot-draw { color: rgba(237, 232, 224, .55); width: 90px; margin: 0 auto 24px; }
-.foot-name { font: 300 var(--s-3)/1.2 var(--serif); margin-bottom: 16px !important; }
-.foot-links { margin-top: 24px !important; }
-.foot-links a { margin: 0 12px; }
+.foot-name { font: 300 var(--s-4)/1.15 var(--serif); margin-bottom: 28px !important; }
+.btn.light { background: var(--ground); color: var(--ink); border-color: var(--ground); }
+.btn.light:hover { background: transparent; color: var(--ground); }
+.foot-cols { max-width: var(--max); margin: 72px auto 0; padding-top: 40px; border-top: 1px solid rgba(237, 232, 224, .2);
+  display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 36px 24px; }
+.foot-cols h2 { font: italic 400 var(--s-1)/1.3 var(--serif); color: rgba(237, 232, 224, .6); margin: 0 0 10px; letter-spacing: 0; }
+.foot-cols p { font: 400 var(--t-small)/1.75 var(--sans); }
+.foot-nav a, .foot-cols .foot-links a { display: block; margin: 0; text-decoration: none; }
+.foot-cols a:hover { text-decoration: underline; }
+.foot-credit { max-width: var(--max); margin: 0 auto 4px !important; font-size: 13px; color: rgba(237, 232, 224, .55); }
+@media (max-width: 599px) { .foot-cols > div:nth-child(-n+2) { grid-column: 1 / -1; } }
+.foot-cols + .foot-credit { margin-top: 48px !important; }
 .foot-credit a { white-space: nowrap; }
-.foot-credit { margin-top: 32px !important; font-size: var(--t-small); color: rgba(237, 232, 224, .55); }
 
 /* the booking bar, on every screen at every width (K0293: our own version of The PIG's always-on bar). Its fields
    open the page's own calendar and guests panel just above it, so dates are chosen without scrolling back up; it
@@ -493,13 +579,19 @@ html.from-bar .gp { position: fixed; top: auto; bottom: 84px; left: auto !import
   .tour-list { position: sticky; top: 100px; }
   .grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
 
-  .where-head { grid-column: 1 / 8; }
-  .times { grid-column: 9 / 13; padding-top: 44px; }
+  .where-head { grid-column: 1 / 9; }
+  .mapbox { grid-column: 1 / 9; aspect-ratio: 4 / 3; margin: 0 0 0 calc(-1 * var(--g)); }
+  .times { grid-column: 9 / 13; grid-row: 2; }
 
-  .words .more { grid-template-columns: 1fr 1fr; }
+  .th-q { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 40px; }
+  .closing img { aspect-ratio: 21 / 8; }
+  .foot-cols { grid-template-columns: 1.2fr 1fr 1.5fr 1fr; }
+  .foot-nav { columns: 2; column-gap: 24px; }
 
   .answers-head { grid-column: 1 / 6; }
-  .answers > div:last-child { grid-column: 7 / 13; padding-top: 44px; }
+  .answers { grid-template-rows: auto 1fr; }
+  .answers .qa-wrap { grid-column: 7 / 13; grid-row: 1 / span 2; padding-top: 44px; }
+  .answers .ask { grid-column: 1 / 6; grid-row: 2; align-self: start; }
 }
 /* desktop header: brand left, the section links and Book together on the right; Menu only below 1280 px.
    Between 700 and 1279 px Menu sits beside Book (K0293: "menu and book on the top are too far apart"). */

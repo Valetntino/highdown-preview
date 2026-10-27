@@ -1,6 +1,6 @@
 # Elderflower Lodge (Highdown Hideaways), Ferring, West Sussex
 
-A private lodge for 6 with its own hot tub. Rated 5.0 from 331 reviews on Airbnb (Superhost and Guest favourite).
+A private lodge for 6 with its own hot tub. Rated 5.0 from 333 reviews on Airbnb (Superhost and Guest favourite).
 
 ## Key facts
 
@@ -69,4 +69,4 @@ Foschini Nursery, Hangleton Lane, Ferring, West Sussex BN12 6PP
 - area.md: walks, beaches and their dog rules, pubs, wet days (area.html)
 - index.json: these facts as exact records
 
-Facts checked 26 September 2026. Built 27 Oct 2026 06:59 GMT.
+Facts checked 26 September 2026. Built 27 Oct 2026 08:09 GMT.

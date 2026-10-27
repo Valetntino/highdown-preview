@@ -964,16 +964,260 @@
   };
   document.head.appendChild(s);
 })();
-// The map keeps its labels readable by scrolling sideways on a phone, which nothing said (26 Oct audit): name it, and
-// let the keyboard scroll it too.
+// The location map (27 Oct 2026; user: "the graphic that has the dots where everything is needs to be massively
+// improved"). img/map.svg is drawn from OpenStreetMap by src/map.py and put inline when it nears the screen, so each
+// walk and drive is an element. On foot / By car moves the view between the two sets of places; pointing at or tapping
+// a row or a dot lights that route and draws it out from the lodge. Reduced motion: the view jumps, nothing draws.
 (function () {
-  var w = document.querySelector('.map-wrap'); if (!w) return;
-  var hint = document.createElement('p'); hint.className = 'map-hint'; hint.textContent = 'Swipe the map sideways to see all of it.';
-  w.parentNode.insertBefore(hint, w.nextSibling);
-  function fit() {
-    var over = w.scrollWidth > w.clientWidth + 1; hint.hidden = !over;
-    if (over) { w.tabIndex = 0; w.setAttribute('role', 'region'); w.setAttribute('aria-label', 'Map, scrolls sideways'); }
-    else { w.removeAttribute('tabindex'); w.removeAttribute('role'); w.removeAttribute('aria-label'); }
+  var box = document.querySelector('.mapbox'), times = document.querySelector('.times');
+  if (!box || !times || !window.fetch) return;
+  var D = JSON.parse(box.getAttribute('data-map')), L = D.lodge, MILE = 160.934;  // map units are 10 m
+  var still = window.matchMedia('(prefers-reduced-motion: reduce)');
+  var svg = null, vb = null, mode = 'walk', lit = null, held = null, raf = 0, shown = false;
+  var lists = times.querySelectorAll('.tl'), rows = times.querySelectorAll('.tl li');
+  times.classList.add('live');
+
+  var sw = document.createElement('div');
+  sw.className = 'map-mode'; sw.setAttribute('role', 'group'); sw.setAttribute('aria-label', 'Times and routes');
+  sw.innerHTML = '<button type="button" data-m="walk">On foot</button><button type="button" data-m="drive">By car</button>';
+  var layer = document.createElement('div'); layer.className = 'pins'; layer.setAttribute('aria-hidden', 'true');
+  var scale = document.createElement('div'); scale.className = 'map-scale'; scale.setAttribute('aria-hidden', 'true');
+  scale.innerHTML = '<i></i><span></span>';
+  box.appendChild(layer); box.appendChild(scale); box.appendChild(sw);
+
+  function pin(cls, text, x, y, i) {
+    var p = document.createElement('span');
+    p.className = 'pin ' + cls; p.innerHTML = '<i></i><b></b><em><s>&#8594;</s></em>';
+    p.lastChild.appendChild(document.createTextNode(text));
+    p._x = x; p._y = y; p._i = i; p._side = cls; p._name = text;
+    layer.appendChild(p); return p;
   }
-  fit(); window.addEventListener('resize', fit);
+  var lodge = pin('lodge s-l', 'Elderflower Lodge', L[0], L[1], null);
+  var pins = D.places.map(function (p) {
+    var el = pin('s-' + p.side, p.name, p.to[0], p.to[1], p.i); el._mode = p.mode;
+    el._far = Math.hypot(p.to[0] - L[0], p.to[1] - L[1]) > 1000;  // Chichester, Goodwood, Brighton, Gatwick: off the by-car view
+    return el;
+  });
+
+  // each row becomes a button that lights its route
+  rows.forEach(function (li) {
+    var b = document.createElement('button'); b.type = 'button'; b.className = 'tr'; b.setAttribute('aria-pressed', 'false');
+    while (li.firstChild) b.appendChild(li.firstChild);
+    li.appendChild(b);
+  });
+
+  // how far each dot's label reaches, in screen pixels: [left, right, up, down]
+  function reach(p) {
+    var w = p.lastChild.offsetWidth || p._w || p.lastChild.textContent.length * 7.5;
+    p._w = w;
+    var side = p === lodge ? 'l' : p._side.slice(-1);
+    return side === 'r' ? [8, 13 + w, 10, 10] : side === 'l' ? [(p === lodge ? 17 : 13) + w, 10, 12, 12]
+      : side === 't' ? [w / 2, w / 2, 27, 8] : [w / 2, w / 2, 8, 27];
+  }
+  // the smallest view that holds the lodge and this mode's near places with every label whole, clear of the switch
+  // (top) and the scale (bottom); one map unit is 10 m
+  function target(m) {
+    var W = box.clientWidth, H = box.clientHeight, pad = 10, top = 60, bot = 28;
+    var ps = [lodge].concat(pins.filter(function (p) { return p._mode === m && !p._far; }));
+    var rs = ps.map(reach), s = m === 'walk' ? 0.45 : 1.6;
+    for (var k = 0; k < 60; k++, s *= 1.08) {
+      var lo = -1e9, hi = 1e9, tlo = -1e9, thi = 1e9;
+      ps.forEach(function (p, j) {
+        var r = rs[j];
+        hi = Math.min(hi, p._x - (r[0] + pad) * s); lo = Math.max(lo, p._x + (r[1] + pad) * s - W * s);
+        thi = Math.min(thi, p._y - (r[2] + top) * s); tlo = Math.max(tlo, p._y + (r[3] + bot) * s - H * s);
+      });
+      if (lo <= hi && tlo <= thi) return [(lo + hi) / 2, (tlo + thi) / 2, W * s, H * s];
+    }
+    return [L[0] - W * s / 2, L[1] - H * s / 2, W * s, H * s];
+  }
+
+  function place(v) {
+    var W = box.clientWidth, s = v[2] / W, H = box.clientHeight;
+    svg.setAttribute('viewBox', v.map(function (n) { return n.toFixed(2); }).join(' '));
+    svg.style.setProperty('--u', s + 'px');
+    svg.style.setProperty('--fs', (W < 600 ? 11 : 12) * s + 'px');
+    var lx = (L[0] - v[0]) / s, ly = (L[1] - v[1]) / s;
+    lodge.style.transform = 'translate(' + lx + 'px,' + ly + 'px)';
+    var taken = [];  // boxes of the labels in view, so an edge chip never lands on one
+    var on = pins.filter(function (p) { return !p.hidden; });
+    on.forEach(function (p) {
+      p._sx = (p._x - v[0]) / s; p._sy = (p._y - v[1]) / s;
+      p._out = p._sx < 0 || p._sx > W || p._sy < 0 || p._sy > H;
+      p.classList.toggle('edge', p._out);
+      if (!p._out) { var r = reach(p); taken.push([p._sx - r[0], p._sy - r[2], p._sx + r[1], p._sy + r[3]]); }
+    });
+    var lr = reach(lodge); taken.push([lx - lr[0], ly - lr[2], lx + lr[1], ly + lr[3]]);
+    taken.push([0, 0, 190, 58]);  // the switch
+    on.forEach(function (p) {
+      var x = p._sx, y = p._sy;
+      if (p._out) {  // a chip on the edge, on the line from the lodge, pointing the way; slid along the edge if it would hide a label
+        var dx = x - lx, dy = y - ly, cw = (p._w || 80) + 34, ch = 30, ix = cw / 2 + 6, it = 62 + ch / 2, ib = ch / 2 + 26, k = 1;
+        if (dx) k = Math.min(k, ((dx > 0 ? W - ix : ix) - lx) / dx);
+        if (dy) k = Math.min(k, ((dy > 0 ? H - ib : it) - ly) / dy);
+        x = lx + dx * k; y = ly + dy * k;
+        var side = Math.abs(x - ix) < 1 || Math.abs(x - (W - ix)) < 1, bx = x, by = y;
+        for (var n = 0; n < 12; n++) {
+          var d = (n % 2 ? 1 : -1) * Math.ceil(n / 2) * 34;
+          x = side ? bx : Math.max(ix, Math.min(W - ix, bx + d)); y = side ? Math.max(it, Math.min(H - ib, by + d)) : by;
+          var me = [x - cw / 2, y - ch / 2, x + cw / 2, y + ch / 2];
+          if (!taken.some(function (t) { return me[0] < t[2] && me[2] > t[0] && me[1] < t[3] && me[3] > t[1]; })) break;
+        }
+        taken.push([x - cw / 2, y - ch / 2, x + cw / 2, y + ch / 2]);
+        p.querySelector('s').style.transform = 'rotate(' + Math.atan2(p._sy - y, p._sx - x) + 'rad)';
+      }
+      p.style.transform = 'translate(' + x + 'px,' + y + 'px)';
+    });
+    box._taken = taken;
+    // scale bar: the longest round distance that fits in 110 px
+    var ppm = MILE / s, d = [0.25, 0.5, 1, 2, 5, 10].filter(function (n) { return n * ppm <= 110; }).pop() || 0.25;
+    scale.firstChild.style.width = Math.round(d * ppm) + 'px';
+    scale.lastChild.textContent = (d === 0.25 ? '¼ mile' : d === 0.5 ? '½ mile' : d + (d === 1 ? ' mile' : ' miles'));
+    vb = v;
+  }
+
+  // the map's own place names give way to the dots' labels and chips, and a name the dots already carry shows once
+  function declutter() {
+    if (!svg) return;
+    var r0 = box.getBoundingClientRect(), W = r0.width, H = r0.height, kept = (box._taken || []).slice(), names = {};
+    pins.forEach(function (p) { if (!p.hidden) names[p._name.toLowerCase()] = 1; });
+    var rank = function (el) { var c = el.getAttribute('class') || ''; return /r3/.test(c) ? 0 : /area/.test(c) ? 1 : /r2/.test(c) ? 2 : /r1/.test(c) ? 3 : 4; };
+    var ts = [];
+    svg.querySelectorAll('.labels text').forEach(function (el) { var b = el.getBoundingClientRect(); if (b.width) ts.push([el, b, rank(el)]); });
+    ts.sort(function (a, b) { return a[2] - b[2]; });
+    // most important first; a name is kept only whole, inside the frame and clear of every label already kept
+    var out = ts.map(function (t) {
+      var x0 = t[1].left - r0.left - 3, y0 = t[1].top - r0.top - 2, x1 = x0 + t[1].width + 6, y1 = y0 + t[1].height + 4;
+      var hide = !!names[t[0].textContent.toLowerCase()] || x0 < 0 || y0 < 0 || x1 > W || y1 > H
+        || kept.some(function (q) { return x0 < q[2] && x1 > q[0] && y0 < q[3] && y1 > q[1]; });
+      if (!hide) kept.push([x0, y0, x1, y1]);
+      return hide;
+    });
+    ts.forEach(function (t, j) { t[0].classList.toggle('hide', out[j]); });
+  }
+
+  function look(m) {
+    svg.classList.toggle('v-walk', m === 'walk'); svg.classList.toggle('v-drive', m === 'drive');
+    pins.forEach(function (p) { p.hidden = p._mode !== m; });
+  }
+
+  function route(i) { return svg && svg.querySelector('.rt[data-r="' + i + '"]'); }
+  function draw(el, delay) {
+    if (!el) return;
+    el.style.transition = 'none'; el.style.strokeDasharray = '1 1'; el.style.strokeDashoffset = still.matches ? '0' : '1';
+    if (still.matches) return;
+    el.getBoundingClientRect();
+    el.style.transition = 'stroke-dashoffset 1.1s cubic-bezier(.45,0,.2,1) ' + delay + 'ms';
+    el.style.strokeDashoffset = '0';
+  }
+  function drawAll() {
+    var n = 0;
+    pins.forEach(function (p) {
+      if (p._mode !== mode) return;
+      var d = n++ * 110; draw(route(p._i), d);
+      p.style.transitionDelay = still.matches ? '0ms' : d + 700 + 'ms';
+    });
+    layer.classList.remove('in'); layer.getBoundingClientRect(); layer.classList.add('in');
+  }
+
+  function show(i) {
+    if (lit === i) return;
+    lit = i;
+    if (svg) svg.querySelectorAll('.rt').forEach(function (r) {
+      var me = +r.getAttribute('data-r') === i;
+      r.classList.toggle('on', me); r.classList.toggle('dim', i !== null && !me);
+      if (me) { r.parentNode.appendChild(r); draw(r, 0); }
+    });
+    pins.forEach(function (p) { p.classList.toggle('on', p._i === i); p.style.transitionDelay = '0ms'; });
+    rows.forEach(function (li) { li.classList.toggle('on', +li.getAttribute('data-r') === i); });
+    box.classList.toggle('hl', i !== null);
+  }
+  function hold(i) {
+    held = held === i ? null : i;
+    rows.forEach(function (li) { li.firstChild.setAttribute('aria-pressed', +li.getAttribute('data-r') === held ? 'true' : 'false'); });
+    show(held);
+  }
+  rows.forEach(function (li) {
+    var i = +li.getAttribute('data-r'), b = li.firstChild;
+    b.addEventListener('mouseenter', function () { show(i); });
+    b.addEventListener('mouseleave', function () { show(held); });
+    b.addEventListener('focus', function () { show(i); });
+    b.addEventListener('blur', function () { show(held); });
+    b.addEventListener('click', function () {
+      hold(i);
+      var r = box.getBoundingClientRect(), seen = Math.min(r.bottom, innerHeight) - Math.max(r.top, 0);
+      if (seen < r.height * 0.6) box.scrollIntoView({ block: 'nearest', behavior: still.matches ? 'auto' : 'smooth' });
+    });
+  });
+  pins.forEach(function (p) {
+    p.addEventListener('pointerenter', function (ev) { if (ev.pointerType === 'mouse') show(p._i); });
+    p.addEventListener('pointerleave', function (ev) { if (ev.pointerType === 'mouse') show(held); });
+    p.addEventListener('click', function () { hold(p._i); });
+  });
+
+  function go(to, ms, done) {
+    cancelAnimationFrame(raf);
+    var from = vb, t0 = performance.now();
+    if (!from || ms === 0 || still.matches) { place(to); if (done) done(); return; }
+    (function step(now) {
+      var t = Math.min(1, (now - t0) / ms), k = t < .5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+      place(from.map(function (a, j) { return a + (to[j] - a) * k; }));
+      if (t < 1) raf = requestAnimationFrame(step); else if (done) done();
+    })(t0);
+  }
+
+  function setMode(m) {
+    mode = m; held = null; show(null);
+    sw.querySelectorAll('button').forEach(function (b) { b.setAttribute('aria-pressed', b.getAttribute('data-m') === m ? 'true' : 'false'); });
+    lists.forEach(function (l) { l.classList.toggle('show', l.getAttribute('data-m') === m); });
+    if (!svg) return;
+    layer.classList.remove('in');
+    // zooming in shows the streets first; zooming out keeps them until the view has left
+    var to = target(m), from = vb;
+    if (m === 'walk') { look(m); place(to); declutter(); if (from) place(from); }
+    go(to, 1000, function () { look(m); place(vb); declutter(); drawAll(); });
+  }
+  sw.addEventListener('click', function (ev) { var b = ev.target.closest('button'); if (b) setMode(b.getAttribute('data-m')); });
+  setMode('walk');
+
+  function load() {
+    fetch(box.getAttribute('data-src')).then(function (r) { if (!r.ok) throw r.status; return r.text(); }).then(function (t) {
+      box.insertAdjacentHTML('afterbegin', t.slice(t.indexOf('<svg')));
+      svg = box.querySelector('svg.map');
+      svg.removeAttribute('style');
+      pins.forEach(reach);  // measure every label while all are shown
+      look(mode); place(target(mode)); declutter();
+      svg.querySelectorAll('.rt').forEach(function (r) { r.setAttribute('pathLength', '1'); r.style.strokeDasharray = '1 1'; r.style.strokeDashoffset = '1'; });
+      box.classList.add('ready');
+      if (lit !== null) { var was = lit; lit = undefined; show(was); }  // a row chosen before the map arrived
+      new IntersectionObserver(function (es, o) {
+        if (es[0].isIntersecting) { o.disconnect(); shown = true; drawAll(); }
+      }, { threshold: 0.35 }).observe(box);
+    }).catch(function () {
+      box.insertAdjacentHTML('afterbegin', '<img src="' + box.getAttribute('data-src') + '" alt="">');
+      sw.hidden = true; layer.hidden = true; scale.hidden = true;
+      lists.forEach(function (l) { l.classList.add('show'); });
+    });
+  }
+  new IntersectionObserver(function (es, o) { if (es[0].isIntersecting) { o.disconnect(); load(); } }, { rootMargin: '900px 0px' }).observe(box);
+  if (window.ResizeObserver) new ResizeObserver(function () { if (svg) { cancelAnimationFrame(raf); place(target(mode)); declutter(); } }).observe(box);
+})();
+// Reviews: guests' words grouped by why they came, one group at a time behind chips (27 Oct 2026 redesign);
+// without the script every group shows under its own heading.
+(function () {
+  var wrap = document.querySelector('.themes'); if (!wrap) return;
+  var groups = wrap.querySelectorAll('.theme'), bar = document.createElement('div');
+  bar.className = 'chips'; bar.setAttribute('role', 'group'); bar.setAttribute('aria-label', 'Guests who came as');
+  groups.forEach(function (g, i) {
+    var b = document.createElement('button'); b.type = 'button'; b.textContent = g.querySelector('h3').textContent;
+    b.setAttribute('aria-controls', g.id);
+    b.addEventListener('click', function () { pick(i); });
+    bar.appendChild(b);
+  });
+  wrap.parentNode.insertBefore(bar, wrap); wrap.classList.add('live');
+  function pick(i) {
+    groups.forEach(function (g, j) { g.hidden = j !== i; });
+    bar.querySelectorAll('button').forEach(function (b, j) { b.setAttribute('aria-pressed', j === i ? 'true' : 'false'); });
+  }
+  pick(0);
 })();
