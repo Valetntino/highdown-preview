@@ -36,7 +36,7 @@
   "airbnb_reviews_at": "26 October 2026"
  },
  "facts_checked": "26 September 2026",
- "built": "2026-10-27T06:54:40.430109+00:00",
+ "built": "2026-10-27T06:59:23.670439+00:00",
  "answers": [
   {
    "q": "What is provided?",
@@ -53,10 +53,6 @@
   {
    "q": "Is it step-free?",
    "a": "Inside is all on one level, with a large wet room and widened doorways. There are 2 steps to the front door; we put a ramp down on request."
-  },
-  {
-   "q": "Is there air conditioning?",
-   "a": "Not yet. Fans are provided for hot nights."
   },
   {
    "q": "How do we get there without a car?",
@@ -80,7 +76,7 @@
   },
   {
    "q": "How far is the beach?",
-   "a": "About 10 minutes by car, or about 40 minutes on foot (1.7 miles, mostly flat; the shorter footpath over the railway is closed until February 2027)."
+   "a": "About 10 minutes by car, or about 40 minutes on foot (1.7 miles, mostly flat)."
   },
   {
    "q": "How do we book?",
