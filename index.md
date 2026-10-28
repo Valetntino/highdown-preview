@@ -69,4 +69,4 @@ Foschini Nursery, Hangleton Lane, Ferring, West Sussex BN12 6PP
 - area.md: walks, beaches and their dog rules, pubs, wet days (area.html)
 - index.json: these facts as exact records
 
-Facts checked 26 September 2026. Built 28 Oct 2026 03:12 GMT.
+Facts checked 26 September 2026. Built 28 Oct 2026 03:20 GMT.

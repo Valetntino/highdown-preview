@@ -130,6 +130,9 @@ h1 { font: 300 var(--s-hero)/1 var(--serif); letter-spacing: -.01em; }
 .q-dog input { width: 18px; height: 18px; accent-color: var(--accent); }
 .q-how { flex-basis: 100%; margin-top: -6px; max-width: 62ch; }  /* the nights that make the total, smaller than it */
 .q-terms { flex-basis: 100%; max-width: 62ch; }
+.q-cancel { flex-basis: 100%; max-width: 62ch; }
+.q-cancel summary { cursor: pointer; width: max-content; text-decoration: underline; text-underline-offset: 4px; }
+.q-cancel p { margin-top: 6px; }
 .q-act { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 24px; }
 .q-air { color: var(--muted); }
 .q-alt { margin: 0; color: var(--muted); font-size: var(--t-ui); }
