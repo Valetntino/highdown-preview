@@ -126,6 +126,15 @@
     var qb = document.getElementById('quote'); if (qb) io.observe(qb);
   }
 })();
+// Each night's price from PriceLabs, refreshed hourly beside the page (tools/price_nights_v1.py site via the booked-dates
+// job). The copy built into the page is only as fresh as the last build, and the quote hides once prices are
+// stale_days old, so the calendar and the quote both take this one when it is newer ('hh-nights').
+window.HH_NIGHTS = null;
+if (window.fetch) fetch('nights.json', { cache: 'no-cache' }).then(function (r) { return r.ok ? r.json() : null; }).then(function (j) {
+  if (!j || !j.nights || !j.fetched) return;
+  window.HH_NIGHTS = j;
+  document.dispatchEvent(new CustomEvent('hh-nights'));
+}).catch(function () {});
 // Date picker: a calendar in the site's own type and colours, in place of the phone's built-in one, which the user
 // called ugly (25 Oct 2026, K0286). Tap the arrival day, then the leaving day: two months side by side on wide
 // screens, one month in a sheet from the bottom on phones. Past days can't be chosen, nor stays under the minimum,
@@ -204,7 +213,7 @@
   // Airbnb price from src/nights.json, or else the weekday or Friday-and-Saturday price for its month
   var priced = !!(P && (P.show_everywhere || /^(localhost|127\.0\.0\.1)$/.test(location.hostname) || /\/highdown-preview\//.test(location.pathname)));
   function rate(d) {
-    if (!priced) return 0;
+    if (!priced || (N && !(Date.now() - Date.parse(N.fetched) <= P.per_night.stale_days * DAY))) return 0;
     if (N) { var x = N.nights[iso(d)]; return x && x.open ? Math.round(x.air * (1 - P.per_night.direct_off)) : 0; }
     var we = d.getDay() === 5 || d.getDay() === 6;
     return Math.round((we ? P.night.fri_sat : P.night.weekday) * (P.season[String(d.getMonth() + 1)] || 1));
@@ -355,6 +364,12 @@
     if (!cal.hidden) render();
     if (start && end) sync();  // dates already chosen (from the address or an early tap): the quote checks them again
   }).catch(function () {});
+  document.addEventListener('hh-nights', function () {
+    var j = window.HH_NIGHTS;
+    if (N && !(Date.parse(j.fetched) > Date.parse(N.fetched))) return;
+    N = j;
+    if (!cal.hidden) render();
+  });
 })();
 // Direct price: the total for the chosen dates, worked out from the settings in #pricing (src/pricing.json;
 // research/booking-v1/PLAN.md, 25 Oct 2026). The booking button shows it here instead of sending guests to Airbnb
@@ -373,8 +388,8 @@
   var base = (ask ? ask.getAttribute('href') : form.getAttribute('data-mail')).split('?')[0], DAY = 864e5, tel = document.querySelector('a[href^="tel:"]'), sent = '';
   // Each night's Airbnb price from PriceLabs (src/nights.json); once its prices are older than stale_days the quote
   // hides rather than guess, since the flat settings no longer match Airbnb.
-  var stale = !!(N && P && !(Date.now() - Date.parse(N.fetched) <= P.per_night.stale_days * DAY));
-  var show = !!(P && box && !stale && (P.show_everywhere || local || preview));
+  function stale() { return !!(N && P && !(Date.now() - Date.parse(N.fetched) <= P.per_night.stale_days * DAY)); }
+  var show = !!(P && box && (P.show_everywhere || local || preview));
   function day(v) { var p = v.split('-'); return new Date(+p[0], +p[1] - 1, +p[2]); }
   function iso(d) { return d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2) + '-' + ('0' + d.getDate()).slice(-2); }
   function words(v) {
@@ -506,7 +521,7 @@
     box.hidden = !(ci.value && co.value);
     if (box.hidden) return;
     parts['q-air'].setAttribute('href', air + '?check_in=' + ci.value + '&check_out=' + co.value + '&adults=' + ad.value + '&guests=' + ad.value + (dog ? '&pets=1' : ''));
-    var q = show ? quote(dog) : null, priced = !!(q && q.total !== undefined);
+    var q = show && !stale() ? quote(dog) : null, priced = !!(q && q.total !== undefined);
     parts['q-line'].hidden = parts['q-how'].hidden = !priced; parts['q-msg'].hidden = priced;
     if (parts['q-dog']) parts['q-dog'].hidden = !priced;
     if (!priced) {
@@ -528,6 +543,10 @@
   }
   [ci, co, ad].forEach(function (el) { el.addEventListener('change', update); el.addEventListener('input', update); });
   if (parts.dog) parts.dog.addEventListener('change', update);
+  document.addEventListener('hh-nights', function () {
+    var j = window.HH_NIGHTS;
+    if (!N || Date.parse(j.fetched) > Date.parse(N.fetched)) { N = j; update(); }
+  });
   // the booking button: no dates yet opens the calendar; with dates it brings the price into view. Without the box
   // (no script, or the box left out) the form still hands the dates to Airbnb.
   if (form && box) form.addEventListener('submit', function (ev) {
