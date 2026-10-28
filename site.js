@@ -148,7 +148,11 @@
   function fmt(d, o) { return d.toLocaleDateString('en-GB', o); }
   // the fewest nights a stay arriving on a may have (src/pricing.json): 2 for arrivals soon, else min_nights
   function least(a) { return P ? (nights(today, a) <= P.two_night_within_days ? 2 : P.min_nights) : 1; }
-  function booked(d) { var x = N && N.nights[iso(d)]; return !!(x && !x.open); }
+  // nights taken on Airbnb, which imports the Vrbo, Plum Guide and Booking.com calendars: booked.json beside the page,
+  // dates only, refreshed hourly by tools/booked_nights_v1.py. Shared with the quote below; a missing file (a local
+  // file:// test, a failed fetch) leaves every night open, as before
+  var B = window.HH_BOOKED = {}, asof = null;
+  function booked(d) { var x = N && N.nights[iso(d)]; return !!(x && !x.open) || !!B[iso(d)]; }
   function fits(a, b) {
     if (nights(a, b) < least(a)) return 'short';
     for (var x = a; x < b; x = add(x, 1)) if (booked(x)) return 'booked';
@@ -187,9 +191,15 @@
   form.appendChild(cal); document.body.appendChild(back);
   var months = cal.querySelector('.cal-months'), say = cal.querySelector('.cal-say');
   var tel = document.querySelector('a[href^="tel:"]');
-  if (P) cal.querySelector('.cal-rule').textContent = P.min_nights + ' nights or more; 2 nights for arrivals within ' +
-    Math.round(P.two_night_within_days / 7) + ' weeks. To arrive ' + (P.earliest_days_ahead === 2 ? 'today or tomorrow' : 'sooner') +
-    ', ring us' + (tel ? ' on ' + tel.textContent.replace(/^\D+/, '').trim() : '') + '.';
+  function rule() {
+    if (!P) return;
+    var t = asof && new Date(asof), when = t && !isNaN(t) ? ' Booked dates as of ' + t.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/London' }) +
+      (t.toDateString() === new Date().toDateString() ? '' : ' on ' + t.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', timeZone: 'Europe/London' })) + '.' : '';
+    cal.querySelector('.cal-rule').textContent = P.min_nights + ' nights or more; 2 nights for arrivals within ' +
+      Math.round(P.two_night_within_days / 7) + ' weeks. To arrive ' + (P.earliest_days_ahead === 2 ? 'today or tomorrow' : 'sooner') +
+      ', ring us' + (tel ? ' on ' + tel.textContent.replace(/^\D+/, '').trim() : '') + '.' + when;
+  }
+  rule();
   // each night's price under its day, where the price quote shows (the same rule as the quote below): the night's
   // Airbnb price from src/nights.json, or else the weekday or Friday-and-Saturday price for its month
   var priced = !!(P && (P.show_everywhere || /^(localhost|127\.0\.0\.1)$/.test(location.hostname) || /\/highdown-preview\//.test(location.pathname)));
@@ -217,7 +227,7 @@
         '<span aria-hidden="true">Fr</span><span aria-hidden="true">Sa</span><span aria-hidden="true">Su</span>';
       for (var i = (first.getDay() + 6) % 7; i > 0; i--) html += '<span></span>';
       for (var dd = 1; dd <= dim; dd++) {
-        var dt = new Date(first.getFullYear(), first.getMonth(), dd), r = dt >= today ? rate(dt) : 0;
+        var dt = new Date(first.getFullYear(), first.getMonth(), dd), r = dt >= today && !booked(dt) ? rate(dt) : 0;
         html += '<button type="button" data-d="' + iso(dt) + '"><b>' + dd + '</b>' + (r ? '<i>£' + r + '</i>' : '') + '</button>';
       }
       html += '</div></div>';
@@ -338,6 +348,13 @@
   });
   try { wide.addEventListener('change', function () { if (!cal.hidden) { back.hidden = wide.matches; document.documentElement.classList.toggle('cal-lock', !wide.matches); render(); } }); } catch (err) { /* old Safari */ }
   label(0); label(1);
+  if (window.fetch) fetch('booked.json', { cache: 'no-cache' }).then(function (r) { return r.ok ? r.json() : null; }).then(function (j) {
+    if (!j || !j.booked) return;
+    j.booked.forEach(function (d) { B[d] = 1; });
+    asof = j.fetched; rule();
+    if (!cal.hidden) render();
+    if (start && end) sync();  // dates already chosen (from the address or an early tap): the quote checks them again
+  }).catch(function () {});
 })();
 // Direct price: the total for the chosen dates, worked out from the settings in #pricing (src/pricing.json;
 // research/booking-v1/PLAN.md, 25 Oct 2026). The booking button shows it here instead of sending guests to Airbnb
@@ -387,6 +404,7 @@
     var direct = 0, air = 0, base = 0, late = 0, cut = null, nl = [];
     for (var i = 0; i < n; i++) {
       var d = new Date(a.getFullYear(), a.getMonth(), a.getDate() + i), we = d.getDay() === 5 || d.getDay() === 6;
+      if (window.HH_BOOKED && window.HH_BOOKED[iso(d)]) return { msg: 'Some of these nights are already booked. Try other dates, or ask us.' };
       if (N) {
         var x = N.nights[iso(d)];
         if (!x) return { msg: 'We can’t price these dates here yet. Ask us for a price.' };
