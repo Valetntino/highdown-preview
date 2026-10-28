@@ -177,17 +177,29 @@
   var cal = document.createElement('div'), back = document.createElement('div');
   cal.className = 'cal'; cal.hidden = true; cal.setAttribute('role', 'dialog'); cal.setAttribute('aria-label', 'Choose your dates');
   back.className = 'cal-back'; back.hidden = true;
-  cal.innerHTML = '<div class="cal-top"><p class="cal-say" aria-live="polite"></p><button type="button" class="cal-x">Close</button></div>' +
+  // Arrive and Leave as two tabs over the months, as the big booking sites lay them out (user, 27 Oct: "ours sucks")
+  cal.innerHTML = '<div class="cal-top"><p class="cal-say" aria-live="polite"></p><div class="cal-pick">' +
+    '<button type="button" data-k="0"><span>Arrive</span><b></b></button><button type="button" data-k="1"><span>Leave</span><b></b></button></div></div>' +
     '<div class="cal-nav"><button type="button" class="cal-prev" aria-label="Earlier month">&#8592;</button>' +
     '<button type="button" class="cal-next" aria-label="Later month">&#8594;</button></div>' +
     '<div class="cal-months"></div>' +
-    '<div class="cal-foot"><button type="button" class="cal-clear">Clear dates</button><p class="cal-rule"></p></div>';
+    '<p class="cal-rule"></p><div class="cal-foot"><button type="button" class="cal-clear">Clear dates</button><button type="button" class="cal-x">Close</button></div>';
   form.appendChild(cal); document.body.appendChild(back);
   var months = cal.querySelector('.cal-months'), say = cal.querySelector('.cal-say');
   var tel = document.querySelector('a[href^="tel:"]');
-  if (P) cal.querySelector('.cal-rule').textContent = 'Stays of ' + P.min_nights + ' nights or more, or 2 nights for arrivals in the next ' +
+  if (P) cal.querySelector('.cal-rule').textContent = P.min_nights + ' nights or more; 2 nights for arrivals within ' +
     Math.round(P.two_night_within_days / 7) + ' weeks. To arrive ' + (P.earliest_days_ahead === 2 ? 'today or tomorrow' : 'sooner') +
     ', ring us' + (tel ? ' on ' + tel.textContent.replace(/^\D+/, '').trim() : '') + '.';
+  // each night's price under its day, where the price quote shows (the same rule as the quote below): the night's
+  // Airbnb price from src/nights.json, or else the weekday or Friday-and-Saturday price for its month
+  var priced = !!(P && (P.show_everywhere || /^(localhost|127\.0\.0\.1)$/.test(location.hostname) || /\/highdown-preview\//.test(location.pathname)));
+  function rate(d) {
+    if (!priced) return 0;
+    if (N) { var x = N.nights[iso(d)]; return x && x.open ? Math.round(x.air * (1 - P.per_night.direct_off)) : 0; }
+    var we = d.getDay() === 5 || d.getDay() === 6;
+    return Math.round((we ? P.night.fri_sat : P.night.weekday) * (P.season[String(d.getMonth() + 1)] || 1));
+  }
+  var picks = [].slice.call(cal.querySelectorAll('.cal-pick button'));
 
   // why day d can't be chosen now ('past', 'short', 'booked'), or ''
   function why(d) {
@@ -204,7 +216,10 @@
         '<span aria-hidden="true">Mo</span><span aria-hidden="true">Tu</span><span aria-hidden="true">We</span><span aria-hidden="true">Th</span>' +
         '<span aria-hidden="true">Fr</span><span aria-hidden="true">Sa</span><span aria-hidden="true">Su</span>';
       for (var i = (first.getDay() + 6) % 7; i > 0; i--) html += '<span></span>';
-      for (var dd = 1; dd <= dim; dd++) html += '<button type="button" data-d="' + iso(new Date(first.getFullYear(), first.getMonth(), dd)) + '">' + dd + '</button>';
+      for (var dd = 1; dd <= dim; dd++) {
+        var dt = new Date(first.getFullYear(), first.getMonth(), dd), r = dt >= today ? rate(dt) : 0;
+        html += '<button type="button" data-d="' + iso(dt) + '"><b>' + dd + '</b>' + (r ? '<i>£' + r + '</i>' : '') + '</button>';
+      }
       html += '</div></div>';
     }
     months.innerHTML = html;
@@ -216,13 +231,19 @@
     var to = end || (picking === 'out' && start && hover && hover > start && !why(hover) ? hover : null), aim = target();
     months.querySelectorAll('button').forEach(function (b) {
       var d = day(b.dataset.d), no = why(d), s = !!(start && +d === +start), e = !!(to && +d === +to);
-      b.className = (no ? 'no ' + no : '') + (s ? ' s' : '') + (e ? ' e' : '') + (start && to && d > start && d < to ? ' in' : '') +
+      b.className = (no ? 'no ' + no : '') + (s ? ' s' + (to ? ' r' : '') : '') + (e ? ' e' : '') + (start && to && d > start && d < to ? ' in' : '') +
         (+d === +today ? ' now' : '');
       b.setAttribute('aria-disabled', no ? 'true' : 'false');
       b.setAttribute('aria-pressed', s || (e && end) ? 'true' : 'false');
       b.setAttribute('aria-label', fmt(d, LONG) + (s ? ', arrival' : e && end ? ', leaving' : '') +
         (no === 'booked' ? ', booked' : no === 'short' ? ', too short a stay' : no === 'soon' ? ', ring us to arrive this soon' : ''));
       b.tabIndex = +d === +aim ? 0 : -1;
+    });
+    picks.forEach(function (p, k) {
+      var v = k ? end : start;
+      p.querySelector('b').textContent = v ? fmt(v, SHORT) : 'Add date';
+      p.classList.toggle('on', (picking === 'out') === !!k);
+      p.setAttribute('aria-pressed', (picking === 'out') === !!k ? 'true' : 'false');
     });
     say.textContent = note || (start && end ? nights(start, end) + ' nights, ' + fmt(start, SHORT) + ' to ' + fmt(end, SHORT) :
       start ? 'Arriving ' + fmt(start, SHORT) + '. Now choose the day you leave.' : 'Choose the day you arrive.');
@@ -303,6 +324,8 @@
   cal.querySelector('.cal-prev').addEventListener('click', function () { view = month(view, -1); render(); });
   cal.querySelector('.cal-next').addEventListener('click', function () { view = month(view, 1); render(); });
   cal.querySelector('.cal-x').addEventListener('click', function () { close(true); });
+  // Arrive picks a new arrival; Leave, once there is an arrival, picks the leaving day again
+  picks.forEach(function (p, k) { p.addEventListener('click', function () { note = ''; picking = k && start ? 'out' : 'in'; paint(); }); });
   cal.querySelector('.cal-clear').addEventListener('click', function () { start = end = null; picking = 'in'; sync(); render(); });
   cal.addEventListener('keydown', function (ev) { if (ev.key === 'Escape') { ev.stopPropagation(); close(true); } });
   // Tab out of the picker closes it, so focus never sits behind the phone's sheet (26 Oct audit); a redraw drops focus
@@ -325,12 +348,12 @@
   var ask = document.getElementById('ask'), ci = document.getElementById('ci'), co = document.getElementById('co'),
       ad = document.getElementById('ad'), box = document.getElementById('quote'), cfg = document.getElementById('pricing');
   var form = document.getElementById('book'), air = form ? form.getAttribute('action') : '';
-  if (!ask || !ci || !co || !ad) return;
+  if (!form || !ci || !co || !ad) return;
   var P = null, N = null, nt = document.getElementById('nights');
   try { P = JSON.parse(cfg.textContent); } catch (err) { P = null; }
   try { N = nt ? JSON.parse(nt.textContent) : null; } catch (err) { N = null; }
   var local = /^(localhost|127\.0\.0\.1)$/.test(location.hostname), preview = /\/highdown-preview\//.test(location.pathname);
-  var base = ask.getAttribute('href').split('?')[0], DAY = 864e5, tel = document.querySelector('a[href^="tel:"]'), sent = '';
+  var base = (ask ? ask.getAttribute('href') : form.getAttribute('data-mail')).split('?')[0], DAY = 864e5, tel = document.querySelector('a[href^="tel:"]'), sent = '';
   // Each night's Airbnb price from PriceLabs (src/nights.json); once its prices are older than stale_days the quote
   // hides rather than guess, since the flat settings no longer match Airbnb.
   var stale = !!(N && P && !(Date.now() - Date.parse(N.fetched) <= P.per_night.stale_days * DAY));
@@ -414,13 +437,12 @@
       '<p class="q-msg"></p>' +
       (show ? '<label class="q-dog"><input type="checkbox" id="dog"> Bringing your dog <span class="q-fee"></span></label>' : '') +
       '<p class="q-act"><a class="btn" id="req" href="#"></a><a class="q-air" href="#" target="_blank" rel="noopener">Or see these dates on Airbnb</a></p>' +
-      '<p class="q-alt">No email program? <button type="button" class="q-copy">Copy the request</button> and send it to ' +
-      '<a href="' + base + '">' + base.replace('mailto:', '') + '</a>' + (tel ? ', or ring <a href="' + tel.getAttribute('href') + '">' + tel.textContent.replace(/^\D+/, '').trim() + '</a>' : '') +
-      '. <span class="q-done" aria-live="polite"></span></p>' +
-      '<p class="q-terms">Nothing is paid until we’ve spoken and agreed your dates.' + (show && P.terms_confirmed ? ' Then ' +
+      // a mailto: alone does nothing on a computer with no mail program, so the address and a copy button stay
+      '<p class="q-alt"><a href="' + base + '">' + base.replace('mailto:', '') + '</a> <button type="button" class="q-copy">Copy the request</button>' +
+      ' <span class="q-done" aria-live="polite"></span></p>' +
+      '<p class="q-terms">Nothing to pay until we’ve agreed your dates.' + (show && P.terms_confirmed ? ' Then ' +
       Math.round(P.deposit_share * 100) + '% secures them and the rest is due ' + P.balance_days_before +
-      ' days before you arrive, with a ' + money(P.damage_deposit) + ' damage deposit we refund after your stay.' : '') +
-      ' We use your details only to arrange your stay and keep our accounts, and never pass them on.</p>';
+      ' days before you arrive, with a ' + money(P.damage_deposit) + ' damage deposit we refund after your stay.' : '') + '</p>';
     box.tabIndex = -1;
     ['q-line', 'q-total', 'q-what', 'q-how', 'q-msg', 'q-dog', 'q-fee', 'q-air'].forEach(function (c) { parts[c] = box.querySelector('.' + c); });
     parts.dog = box.querySelector('#dog'); parts.req = box.querySelector('#req');
@@ -446,7 +468,7 @@
     var lines = ['Hello Luca and Trina,', '', 'Please could you give us a direct price for Elderflower Lodge.', '',
       'Arrive: ' + words(ci.value), 'Leave: ' + words(co.value), 'Guests: ' + ad.value, '', 'Thank you,', ''];
     var asking = mail('Elderflower Lodge: a direct price', lines);
-    ask.setAttribute('href', asking);
+    if (ask) ask.setAttribute('href', asking);
     if (!box) return;
     box.hidden = !(ci.value && co.value);
     if (box.hidden) return;
@@ -461,7 +483,7 @@
       return;
     }
     parts['q-total'].textContent = money(q.total);
-    parts['q-what'].textContent = 'for ' + q.n + ' nights, booking direct with us' + (q.fee ? ', including your dog' : '') + '.';
+    parts['q-what'].textContent = 'for ' + q.n + ' nights' + (q.fee ? ', with your dog' : '');
     parts['q-how'].textContent = how(q); parts['q-how'].hidden = !parts['q-how'].textContent;
     parts['q-fee'].textContent = '(+' + money(P.dog_fee) + ')';
     parts.req.textContent = 'Request these dates';
@@ -578,8 +600,10 @@
     return t.replace(':', '.').replace(/\s/g, '').toLowerCase();
   }
   try {
-    var now = new Date(), set = sun(now, false), label = 'Sunset at the lodge', t = set;
-    if (now > set) { t = sun(new Date(now.getTime() + 864e5), true); label = 'Sunrise at the lodge'; }
+    // "today" and "tomorrow" say the time is live: the user took a bare 4.46pm for a fixed time (27 Oct; it was
+    // that day's sunset, 4.46pm in the sunrisesunset.io table for Worthing)
+    var now = new Date(), set = sun(now, false), label = 'Sunset at the lodge today', t = set;
+    if (now > set) { t = sun(new Date(now.getTime() + 864e5), true); label = 'Sunrise at the lodge tomorrow'; }
     box.querySelector('.sun-l').textContent = label;
     box.querySelector('.sun-t').textContent = fmt(t);
     box.hidden = false;
@@ -985,19 +1009,41 @@
   scale.innerHTML = '<i></i><span></span>';
   box.appendChild(layer); box.appendChild(scale); box.appendChild(sw);
 
-  function pin(cls, text, x, y, i) {
+  // each dot's label carries its time in this mode (user's brother, 27 Oct: "time for each one")
+  function pin(cls, text, x, y, i, t) {
     var p = document.createElement('span');
     p.className = 'pin ' + cls; p.innerHTML = '<i></i><b></b><em><s>&#8594;</s></em>';
     p.lastChild.appendChild(document.createTextNode(text));
+    if (t) { var sm = document.createElement('small'); sm.textContent = t; p.lastChild.appendChild(sm); }
     p._x = x; p._y = y; p._i = i; p._side = cls; p._name = text;
     layer.appendChild(p); return p;
   }
   var lodge = pin('lodge s-l', 'Elderflower Lodge', L[0], L[1], null);
   var pins = D.places.map(function (p) {
-    var el = pin('s-' + p.side, p.name, p.to[0], p.to[1], p.i); el._mode = p.mode;
+    var el = pin('s-' + p.side, p.name, p.to[0], p.to[1], p.i, p.t); el._mode = p.mode; el._p = p;
     el._far = Math.hypot(p.to[0] - L[0], p.to[1] - L[1]) > 1000;  // Chichester, Goodwood, Brighton, Gatwick: off the by-car view
     return el;
   });
+
+  // a chosen place opens a card on the map: both times, the route's length and a directions link
+  var card = document.createElement('div'); card.className = 'map-card'; card.hidden = true; card.setAttribute('aria-live', 'polite');
+  box.appendChild(card);
+  function fill(i) {
+    var pn = pins.filter(function (q) { return q._i === i; })[0];
+    if (i === null || !pn) { card.hidden = true; return; }
+    var p = pn._p, m = p.mode === 'walk' ? 'walking' : 'driving';
+    var go = 'https://www.google.com/maps/dir/?api=1&origin=' + D.ll.join(',') + '&destination=' + p.ll.join(',') + '&travelmode=' + m;
+    var t = (p.w ? '<span><b>' + p.w + '</b> on foot</span>' : '') + (p.d ? '<span><b>' + p.d + '</b> by car</span>' : '');
+    card.innerHTML = '<button type="button" class="mc-x" aria-label="Close">&#215;</button><h3><span class="mc-f">' + p.full.replace(/</g, '&lt;') + '</span><span class="mc-s">' + p.name.replace(/</g, '&lt;') + '</span></h3>' +
+      '<p class="mc-t">' + t + '</p><p class="mc-d">' + p.mi + (p.mi === 1 ? ' mile ' : ' miles ') + (p.mode === 'walk' ? 'on foot' : 'by road') +
+      ', the way drawn on the map</p><a href="' + go + '" target="_blank" rel="noopener">Directions<span class="mc-f"> from the lodge</span></a>';
+    card.hidden = false;
+    // the card never covers its own place: a place that would sit under it sends the card to the top
+    card.classList.remove('up');
+    var r = pn.getBoundingClientRect(), c = card.getBoundingClientRect();
+    card.classList.toggle('up', r.top > c.top - 16 && r.left < c.right + 16);
+  }
+  card.addEventListener('click', function (ev) { if (ev.target.closest('.mc-x')) hold(held); });
 
   // each row becomes a button that lights its route
   rows.forEach(function (li) {
@@ -1017,9 +1063,10 @@
   // the smallest view that holds the lodge and this mode's near places with every label whole, clear of the switch
   // (top) and the scale (bottom); one map unit is 10 m
   function target(m) {
-    var W = box.clientWidth, H = box.clientHeight, pad = 10, top = 60, bot = 28;
-    var ps = [lodge].concat(pins.filter(function (p) { return p._mode === m && !p._far; }));
-    var rs = ps.map(reach), s = m === 'walk' ? 0.45 : 1.6;
+    return fit([lodge].concat(pins.filter(function (p) { return p._mode === m && !p._far; })), m === 'walk' ? 0.45 : 1.6);
+  }
+  function fit(ps, s) {
+    var W = box.clientWidth, H = box.clientHeight, pad = 10, top = 60, bot = 28, rs = ps.map(reach);
     for (var k = 0; k < 60; k++, s *= 1.08) {
       var lo = -1e9, hi = 1e9, tlo = -1e9, thi = 1e9;
       ps.forEach(function (p, j) {
@@ -1114,8 +1161,8 @@
     var n = 0;
     pins.forEach(function (p) {
       if (p._mode !== mode) return;
-      var d = n++ * 110; draw(route(p._i), d);
-      p.style.transitionDelay = still.matches ? '0ms' : d + 700 + 'ms';
+      var d = n++ * 70; draw(route(p._i), d);
+      p.style.transitionDelay = still.matches ? '0ms' : d + 500 + 'ms';
     });
     layer.classList.remove('in'); layer.getBoundingClientRect(); layer.classList.add('in');
   }
@@ -1132,10 +1179,18 @@
     rows.forEach(function (li) { li.classList.toggle('on', +li.getAttribute('data-r') === i); });
     box.classList.toggle('hl', i !== null);
   }
+  // a far place (Chichester, Brighton, Goodwood, Gatwick) is off the by-car view: choosing it zooms out to show the
+  // whole way there, and letting it go zooms back
+  var wide = false;
   function hold(i) {
     held = held === i ? null : i;
+    var far = pins.filter(function (p) { return p._i === held && p._far; })[0];
+    if (svg && (far || wide)) {
+      wide = !!far;
+      go(far ? fit([lodge, far].concat(pins.filter(function (p) { return p._mode === mode && !p._far; })), 1.6) : target(mode), 900, declutter);
+    }
     rows.forEach(function (li) { li.firstChild.setAttribute('aria-pressed', +li.getAttribute('data-r') === held ? 'true' : 'false'); });
-    show(held);
+    show(held); fill(held);
   }
   rows.forEach(function (li) {
     var i = +li.getAttribute('data-r'), b = li.firstChild;
@@ -1167,7 +1222,7 @@
   }
 
   function setMode(m) {
-    mode = m; held = null; show(null);
+    mode = m; held = null; wide = false; show(null); fill(null);
     sw.querySelectorAll('button').forEach(function (b) { b.setAttribute('aria-pressed', b.getAttribute('data-m') === m ? 'true' : 'false'); });
     lists.forEach(function (l) { l.classList.toggle('show', l.getAttribute('data-m') === m); });
     if (!svg) return;
@@ -1181,7 +1236,10 @@
   setMode('walk');
 
   function load() {
-    fetch(box.getAttribute('data-src')).then(function (r) { if (!r.ok) throw r.status; return r.text(); }).then(function (t) {
+    // a request Chrome parks on a dropped connection waits 10 s before it retries (measured 27 Oct, 6 of 6 page loads in
+    // one 15-minute spell); past 15 s (that wait plus 92 KB at 1 Mbit, with room) the plain picture takes its place
+    var ac = window.AbortController ? new AbortController() : null, cut = ac && setTimeout(function () { ac.abort(); }, 15000);
+    fetch(box.getAttribute('data-src'), ac ? { signal: ac.signal } : {}).then(function (r) { clearTimeout(cut); if (!r.ok) throw r.status; return r.text(); }).then(function (t) {
       box.insertAdjacentHTML('afterbegin', t.slice(t.indexOf('<svg')));
       svg = box.querySelector('svg.map');
       svg.removeAttribute('style');
@@ -1200,7 +1258,7 @@
     });
   }
   new IntersectionObserver(function (es, o) { if (es[0].isIntersecting) { o.disconnect(); load(); } }, { rootMargin: '900px 0px' }).observe(box);
-  if (window.ResizeObserver) new ResizeObserver(function () { if (svg) { cancelAnimationFrame(raf); place(target(mode)); declutter(); } }).observe(box);
+  if (window.ResizeObserver) new ResizeObserver(function () { if (svg) { cancelAnimationFrame(raf); place(wide ? vb : target(mode)); declutter(); } }).observe(box);
 })();
 // Reviews: guests' words grouped by why they came, one group at a time behind chips (27 Oct 2026 redesign);
 // without the script every group shows under its own heading.

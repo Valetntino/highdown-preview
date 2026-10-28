@@ -13,12 +13,12 @@ A private lodge for 6 with its own hot tub. Rated 5.0 from 333 reviews on Airbnb
 ## How to book
 
 - Airbnb: https://www.airbnb.co.uk/rooms/49257209 (add ?check_in=YYYY-MM-DD&check_out=YYYY-MM-DD&adults=N&guests=N for dates; Airbnb shows the total price)
-- Direct with Luca and Trina: choose dates on the page for a total, then send the request by email (info@highdownhideaways.com) or phone or text 07940 796860. Nothing is paid until you have spoken and agreed the dates. £261 a night, £310 on Fridays and Saturdays. Three weeknights are £783; 4 nights or more are 5% less, a week or more 10% less. A dog is £150 a stay, and nothing else is added. Stays of 3 nights or more (2 for arrivals within 3 weeks); nights in the next 14 days are 5% less.
+- Direct with Luca and Trina: choose dates on the page for a total, then send the request by email (info@highdownhideaways.com) or phone or text 07940 796860. Nothing is paid until you have spoken and agreed the dates. £290 a night, £344 on Fridays and Saturdays. Three weeknights are £870; a week or more are 10% less. A dog is £150 a stay, and nothing else is added. Stays of 3 nights or more (2 for arrivals within 3 weeks); nights in the next 14 days are 0% less.
 
 ## Questions answered
 
 - **What is provided?** Bedding, towels, bathrobes, beach towels, toiletries, Wi-Fi, a full kitchen with coffee pods, and a welcome hamper with eggs from our hens and produce in season.
-- **Is there parking?** Yes, free: 2 cars at the lodge, with more space on the nursery.
+- **Is there parking?** Yes, free: 3 cars at the lodge, with more space on the nursery.
 - **Is there Wi-Fi and TV?** Fast Wi-Fi throughout. A 50-inch smart TV in the lounge (Netflix, Disney+, Prime Video) and a 40-inch smart TV in every bedroom.
 - **Is it step-free?** Inside is all on one level, with a large wet room and widened doorways. There are 2 steps to the front door; we put a ramp down on request.
 - **How do we get there without a car?** Goring-by-Sea station is 1.5 miles away (about 30 minutes on foot); Angmering station is 1.9 miles.
@@ -69,4 +69,4 @@ Foschini Nursery, Hangleton Lane, Ferring, West Sussex BN12 6PP
 - area.md: walks, beaches and their dog rules, pubs, wet days (area.html)
 - index.json: these facts as exact records
 
-Facts checked 26 September 2026. Built 27 Oct 2026 08:09 GMT.
+Facts checked 26 September 2026. Built 28 Oct 2026 01:12 GMT.
