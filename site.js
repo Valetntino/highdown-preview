@@ -403,7 +403,8 @@
     }
     direct = base - late;
     for (var j = 0; j < P.long_stay.length; j++) if (n >= P.long_stay[j].from) { cut = P.long_stay[j]; direct *= 1 - cut.off; break; }
-    if (n >= 7) air *= 1 - P.airbnb.weekly_discount;
+    if (n >= 28 && P.airbnb.monthly_discount) air *= 1 - P.airbnb.monthly_discount;
+    else if (n >= 7) air *= 1 - P.airbnb.weekly_discount;
     var net = air * (1 - P.airbnb.host_fee * (1 + P.airbnb.vat_on_fee));
     var floor = (net + P.card_fee.fixed) / (1 - P.card_fee.rate);
     var stay = Math.round(Math.min(Math.max(direct, floor), air));
