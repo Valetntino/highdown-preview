@@ -13,7 +13,7 @@ A private lodge for 6 with its own hot tub. Rated 5.0 from 333 reviews on Airbnb
 ## How to book
 
 - Airbnb: https://www.airbnb.co.uk/rooms/49257209 (add ?check_in=YYYY-MM-DD&check_out=YYYY-MM-DD&adults=N&guests=N for dates; Airbnb shows the total price)
-- Direct with Luca and Trina: choose dates on the page for a total, then send the request by email (info@highdownhideaways.com) or phone or text 07940 796860. Nothing is paid until you have spoken and agreed the dates. £326 a night, £347 on Fridays and Saturdays. Three weeknights are £978; 10% off a week or more, 12% off 28 nights or more. A dog is £150 a stay, and nothing else is added. Stays of 3 nights or more (2 for arrivals within 3 weeks).
+- Direct with Luca and Trina: choose dates on the page for a total, then send the request by email (info@highdownhideaways.com) or phone or text 07940 796860. Nothing is paid until you have spoken and agreed the dates. £326 a night, £347 on Fridays and Saturdays. Three weeknights are £978; 10% off a week or more, 12% off 28 nights or more. A dog is £150 a stay, and nothing else is added. Stays of 3 nights or more (2 for arrivals within 3 weeks). We reply within 12 hours. Once agreed, 20% secures the dates and the rest is due 28 days before arrival (all of it for a sooner arrival), with a £150 damage deposit refunded within 7 days of the stay. Cancelling: more than 28 days before arrival, the deposit is kept; 15-28 days before, 50% of the total is kept; 8-14 days before, 75% of the total is kept; later, 100% of the total is kept; refunded if the dates re-let, up to what was paid; full refund if the owners cancel.
 
 ## Questions answered
 
@@ -69,4 +69,4 @@ Foschini Nursery, Hangleton Lane, Ferring, West Sussex BN12 6PP
 - area.md: walks, beaches and their dog rules, pubs, wet days (area.html)
 - index.json: these facts as exact records
 
-Facts checked 26 September 2026. Built 28 Oct 2026 02:52 GMT.
+Facts checked 26 September 2026. Built 28 Oct 2026 03:12 GMT.

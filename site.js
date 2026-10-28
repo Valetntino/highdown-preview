@@ -450,6 +450,19 @@
       (q.fee ? ' Your dog ' + money(q.fee) + '.' : '');
   }
 
+  // the cancellation scale from pricing.json cancel_keep (research/terms-v1/GRADES.md), shown before anyone pays
+  function cancelTerms() {
+    var w = { 0.5: 'half the total', 0.75: 'three quarters of it', 1: 'the whole stay' }, k = P.cancel_keep || [], out = [];
+    k.forEach(function (x, i) {
+      var when = x.over_days < 0 ? 'later than that' : i ? (x.over_days + 1) + ' to ' + k[i - 1].over_days + ' days before' : 'more than ' + x.over_days + ' days before you arrive';
+      out.push(when + ', we keep ' + (x.keep === 'deposit' ? 'the deposit' : w[x.keep] || Math.round(x.keep * 100) + '%'));
+    });
+    if (!out.length) return '';
+    return '<details class="q-cancel"><summary>If you need to cancel</summary><p>' + out.join('; ').replace(/^./, function (c) { return c.toUpperCase(); }) +
+      '. If we re-let your dates, we refund what the new guests pay, up to what you paid. If we ever have to cancel, you get everything back. ' +
+      'We suggest travel insurance.</p></details>';
+  }
+
   var parts = {};
   if (box) {
     box.innerHTML = '<p class="q-line"><b class="q-total"></b> <span class="q-what"></span></p><p class="q-how"></p>' +
@@ -459,9 +472,10 @@
       // a mailto: alone does nothing on a computer with no mail program, so the address and a copy button stay
       '<p class="q-alt"><a href="' + base + '">' + base.replace('mailto:', '') + '</a> <button type="button" class="q-copy">Copy the request</button>' +
       ' <span class="q-done" aria-live="polite"></span></p>' +
-      '<p class="q-terms">Nothing to pay until we’ve agreed your dates.' + (show && P.terms_confirmed ? ' Then ' +
-      Math.round(P.deposit_share * 100) + '% secures them and the rest is due ' + P.balance_days_before +
-      ' days before you arrive, with a ' + money(P.damage_deposit) + ' damage deposit we refund after your stay.' : '') + '</p>';
+      '<p class="q-terms">' + (P.reply_hours ? 'We reply within ' + P.reply_hours + ' hours. ' : '') + 'Nothing to pay until we’ve agreed your dates.' +
+      (show && P.terms_confirmed ? ' Then ' + Math.round(P.deposit_share * 100) + '% secures them and the rest is due ' + P.balance_days_before +
+      ' days before you arrive (all of it if you arrive sooner), with a ' + money(P.damage_deposit) +
+      ' damage deposit we refund within 7 days of your stay.</p>' + cancelTerms() : '</p>');
     box.tabIndex = -1;
     ['q-line', 'q-total', 'q-what', 'q-how', 'q-msg', 'q-dog', 'q-fee', 'q-air'].forEach(function (c) { parts[c] = box.querySelector('.' + c); });
     parts.dog = box.querySelector('#dog'); parts.req = box.querySelector('#req');
@@ -496,7 +510,7 @@
     parts['q-line'].hidden = parts['q-how'].hidden = !priced; parts['q-msg'].hidden = priced;
     if (parts['q-dog']) parts['q-dog'].hidden = !priced;
     if (!priced) {
-      parts['q-msg'].textContent = q && q.msg ? q.msg : 'Ask us for a price for these dates and we’ll reply by email.';
+      parts['q-msg'].textContent = q && q.msg ? q.msg : 'Ask us for a price for these dates and we’ll reply by email' + (P.reply_hours ? ' within ' + P.reply_hours + ' hours.' : '.');
       parts.req.textContent = 'Ask us about these dates';
       parts.req.setAttribute('href', asking);
       return;
