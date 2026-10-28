@@ -94,6 +94,7 @@ h1 { font: 300 var(--s-hero)/1 var(--serif); letter-spacing: -.01em; }
 .sun:not([hidden]) { display: flex; flex-direction: column; gap: 4px; }
 .sun-l { color: rgba(255, 255, 255, .8); }
 .sun-t { font: 400 var(--s-2)/1 var(--serif); letter-spacing: .02em; }
+.sun-n { font: 400 var(--t-ui)/1.4 var(--sans); color: rgba(255, 255, 255, .8); }
 
 /* the stay line: booking under the hero */
 .stay { max-width: var(--max); margin: 0 auto; padding: 32px var(--g) 48px; display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px 48px; border-bottom: 1px solid var(--rule); }

@@ -13,7 +13,7 @@
 <link rel="alternate" type="text/markdown" href="area.md" title="Plain-text version for AI assistants">
 <link rel="preload" href="fonts/cormorant-garamond-latin-300-normal.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="preload" href="fonts/jost-latin-400-normal.woff2" as="font" type="font/woff2" crossorigin>
-<link rel="stylesheet" href="style.css?v=4d78cc74">
+<link rel="stylesheet" href="style.css?v=100bfe8f">
 </head>
 <body>
 <a class="skip" href="#main">Skip to content</a>
@@ -60,9 +60,26 @@
       sec.hidden = !n;
     });
   });
-  // Highdown Gardens: today's hours from the month table
+  // Highdown Gardens: open now or not, by the UK clock, not the device's month (user 28 Oct 2026 on the sun line: live
+  // time text must match the hour it is read; this said "Open today" at 9pm)
   var t = document.querySelector('.ag-today');
-  if (t) { var h = JSON.parse(t.getAttribute('data-hours'))[new Date().getMonth()]; t.textContent = 'Open today ' + h + '.'; t.hidden = false; }
+  if (t) {
+    var H = JSON.parse(t.getAttribute('data-hours'));
+    // GARDEN-START: tools/sun_check_v1.py runs this part at set UK clock times
+    var at = function (h, k) { var m = /(\d+)(?:\.(\d+))?(am|pm)/.exec(h.split(' to ')[k]); return (+m[1] % 12 + (m[3] === 'pm' ? 12 : 0)) * 60 + (+m[2] || 0); };
+    var line = function (now) {
+      var v = {};
+      new Intl.DateTimeFormat('en-GB', { timeZone: 'Europe/London', year: 'numeric', month: 'numeric', day: 'numeric', hour: 'numeric', minute: 'numeric', hourCycle: 'h23' })
+        .formatToParts(now).forEach(function (x) { v[x.type] = +x.value; });
+      var h = H[v.month - 1], min = v.hour * 60 + v.minute;
+      if (min < at(h, 0)) return 'Open today ' + h + '.';
+      if (min < at(h, 1)) return 'Open now, until ' + h.split(' to ')[1] + '.';
+      return 'Closed for today. Open tomorrow ' + H[new Date(Date.UTC(v.year, v.month - 1, v.day + 1)).getUTCMonth()] + '.';
+    };
+    // GARDEN-END
+    var paint = function () { t.textContent = line(new Date()); t.hidden = false; };
+    paint(); setInterval(paint, 6e4);
+  }
 })();</script>
 </body>
 </html>

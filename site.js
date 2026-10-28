@@ -146,7 +146,9 @@ if (window.fetch) fetch('nights.json', { cache: 'no-cache' }).then(function (r) 
   var P = null, N = null;
   try { P = JSON.parse(document.getElementById('pricing').textContent); } catch (err) { P = null; }
   try { N = JSON.parse(document.getElementById('nights').textContent); } catch (err) { N = null; }
-  var DAY = 864e5, now = new Date(), today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  // today is the lodge's date, not the device's: a guest abroad late in the evening is already in the UK's next day
+  var DAY = 864e5, now = new Date(), today = (function (p) { return new Date(+p[0], +p[1] - 1, +p[2]); })(
+    new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/London', year: 'numeric', month: '2-digit', day: '2-digit' }).format(now).split('-'));
   var SHORT = { weekday: 'short', day: 'numeric', month: 'short' }, LONG = { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' };
   var wide = window.matchMedia('(min-width: 700px)');
   function iso(d) { return d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2) + '-' + ('0' + d.getDate()).slice(-2); }
@@ -406,7 +408,8 @@ if (window.fetch) fetch('nights.json', { cache: 'no-cache' }).then(function (r) 
     if (!ci.value || !co.value) return null;
     var a = day(ci.value), b = day(co.value), n = Math.round((b - a) / DAY);
     if (n < 1) return null;
-    var now = new Date(), today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    var today = (function (p) { return new Date(+p[0], +p[1] - 1, +p[2]); })(
+      new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/London', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date()).split('-'));
     var lead = Math.round((a - today) / DAY);
     if (lead < P.earliest_days_ahead) {
       var tel = document.querySelector('a[href^="tel:"]');
@@ -631,35 +634,81 @@ if (window.fetch) fetch('nights.json', { cache: 'no-cache' }).then(function (r) 
   document.addEventListener('click', function (ev) { if (!gp.hidden && !gp.contains(ev.target) && !f.contains(ev.target)) close(false); });
   show();
 })();
-// Sunset at the lodge: today's time from the sunrise equation (NOAA-style; the lodge at 50.8224 N, 0.4563 W), shown
-// in UK time. After sunset it shows tomorrow's sunrise. Hidden without this file. Why: blind judges named a live
-// time-of-day detail (Heckfield's clock, The Newt's weather) as a sign of studio work (research/judge-v1, 24 Oct 2026).
+// The next sunrise or sunset as the lodge sees it (50.8224 N, 0.4563 W), in UK time: before dawn today's sunrise, in
+// the day today's sunset, after dark tomorrow's sunrise, with when the sky is light (civil twilight, the sun 6 degrees
+// down). User 28 Oct 2026: at 3.45am the page said "Sunset today 4.44pm", then "the sky doesnt look like that at that
+// time": the sky is light 33-46 min before a table's sunrise, and in summer the sun rises behind the hill to the
+// north-east. Hidden without this file. Why it's there: blind judges named a live time-of-day detail (Heckfield's
+// clock, The Newt's weather) as a sign of studio work (research/judge-v1).
 (function () {
   var box = document.querySelector('.sun'); if (!box) return;
-  var R = Math.PI / 180, LAT = 50.8224, LON = -0.4563, J2000 = Date.UTC(2000, 0, 1, 12);
-  function sun(day, rise) {
-    var n = Math.round((Date.UTC(day.getUTCFullYear(), day.getUTCMonth(), day.getUTCDate(), 12) - J2000) / 864e5) - LON / 360;
-    var M = (357.5291 + 0.98560028 * n) % 360;
-    var C = 1.9148 * Math.sin(M * R) + 0.02 * Math.sin(2 * M * R) + 0.0003 * Math.sin(3 * M * R);
-    var L = (M + C + 180 + 102.9372) % 360;
-    var noon = n + 0.0053 * Math.sin(M * R) - 0.0069 * Math.sin(2 * L * R);
-    var dec = Math.asin(Math.sin(L * R) * Math.sin(23.4397 * R));
-    var w = Math.acos((Math.sin(-0.833 * R) - Math.sin(LAT * R) * Math.sin(dec)) / (Math.cos(LAT * R) * Math.cos(dec))) / R;
-    return new Date(J2000 + (noon + (rise ? -w : w) / 360) * 864e5);
+  // SUN-START: tools/sun_check_v1.py runs this part against the US Naval Observatory, astral and set clock times
+  var R = Math.PI / 180, LAT = 50.8224, LON = -0.4563, SKY = 'sky';
+  // the land's skyline from the lodge (azimuth, degrees up), EU-DEM 25 m via OpenTopoData, 28 Oct 2026; flat (sea and
+  // coastal plain) elsewhere on the sunrise and sunset arcs. Trees and buildings nearby are not in it.
+  var HILL = [45, 4.55, 47, 4.32, 49, 4.1, 51, 3.87, 53, 3.62, 55, 3.39, 57, 3.14, 59, 2.87, 61, 2.58, 63, 2.28, 65, 2.03,
+    67, 1.85, 69, 1.67, 71, 1.48, 73, 1.26, 75, 1.05, 77, .93, 79, .81, 81, .7, 83, .59, 85, .47, 87, .37, 89, .25, 91, .14,
+    93, .03, 95, 0, 265, 0, 275, .11, 281, .16, 283, .19, 285, .22, 287, .24, 289, .25, 291, .26, 293, .31, 295, .35,
+    297, .43, 299, .48, 301, .55, 303, .64, 305, .74, 307, .83, 309, .96, 311, 1.07, 313, 1.23, 315, 1.41, 317, 1.59];
+  function hill(az) {
+    for (var k = 0; k + 2 < HILL.length; k += 2)
+      if (az >= HILL[k] && az <= HILL[k + 2]) return HILL[k + 1] + (HILL[k + 3] - HILL[k + 1]) * (az - HILL[k]) / (HILL[k + 2] - HILL[k]);
+    return 0;
   }
-  function fmt(d) {
-    var t = d.toLocaleTimeString('en-GB', { timeZone: 'Europe/London', hour: 'numeric', minute: '2-digit', hour12: true });
+  // NOAA's solar equations (the spreadsheet's), iterated at the event's own time. alt: the sun centre's height at the
+  // event, -0.833 for a table's sunrise (refraction and half the disc), -6 for civil twilight, or SKY for the moment
+  // the sun's top edge clears the skyline, with refraction at that height (Bennett)
+  function sun(y, m, d, rise, alt) {
+    var t = Date.UTC(y, m - 1, d, 12), want = alt === SKY ? -0.833 : alt;
+    for (var k = 0; k < 6; k++) {
+      var T = (t / 864e5 + 2440587.5 - 2451545) / 36525, om = (125.04 - 1934.136 * T) * R;
+      var L0 = (280.46646 + T * (36000.76983 + T * 0.0003032)) % 360, M = 357.52911 + T * (35999.05029 - 0.0001537 * T);
+      var e = 0.016708634 - T * (0.000042037 + 0.0000001267 * T);
+      var C = Math.sin(M * R) * (1.914602 - T * (0.004817 + 0.000014 * T)) + Math.sin(2 * M * R) * (0.019993 - 0.000101 * T) + Math.sin(3 * M * R) * 0.000289;
+      var lam = L0 + C - 0.00569 - 0.00478 * Math.sin(om);
+      var eps = 23 + (26 + (21.448 - T * (46.815 + T * (0.00059 - T * 0.001813))) / 60) / 60 + 0.00256 * Math.cos(om);
+      var dec = Math.asin(Math.sin(eps * R) * Math.sin(lam * R)), q = Math.pow(Math.tan(eps * R / 2), 2);
+      var eq = 4 / R * (q * Math.sin(2 * L0 * R) - 2 * e * Math.sin(M * R) + 4 * e * q * Math.sin(M * R) * Math.cos(2 * L0 * R) -
+        0.5 * q * q * Math.sin(4 * L0 * R) - 1.25 * e * e * Math.sin(2 * M * R));
+      if (alt === SKY) {
+        var H = ((t - Date.UTC(y, m - 1, d)) / 6e4 + eq + 4 * LON - 720) / 4;
+        var az = (Math.atan2(Math.sin(H * R), Math.cos(H * R) * Math.sin(LAT * R) - Math.tan(dec) * Math.cos(LAT * R)) / R + 540) % 360;
+        var h = hill(az);
+        want = h > 0 ? h - 1 / Math.tan((h + 7.31 / (h + 4.4)) * R) / 60 - 0.267 : -0.833;
+      }
+      var ha = Math.acos(Math.cos((90 - want) * R) / (Math.cos(LAT * R) * Math.cos(dec)) - Math.tan(LAT * R) * Math.tan(dec)) / R;
+      t = Date.UTC(y, m - 1, d) + (720 - 4 * (LON + (rise ? ha : -ha)) - eq) * 6e4;
+    }
+    return new Date(t);
+  }
+  // the UK date (not the device's or UTC's), then which event comes next: [label, time, light line]
+  function next(now) {
+    var p = new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/London', year: 'numeric', month: '2-digit', day: '2-digit' }).format(now).split('-');
+    var y = +p[0], m = +p[1], d = +p[2], set = sun(y, m, d, false, SKY), when = 'today';
+    if (now >= sun(y, m, d, true, SKY) && now < set) return ['Sunset at the lodge today', set, 'Light until ' + fmt(sun(y, m, d, false, -6))];
+    if (now >= set) { var u = new Date(Date.UTC(y, m - 1, d + 1)); y = u.getUTCFullYear(); m = u.getUTCMonth() + 1; d = u.getUTCDate(); when = 'tomorrow'; }
+    var rise = sun(y, m, d, true, SKY);
+    // over 2 min after the table's time (April to August): say why it differs from a weather app's sunrise
+    var lab = rise - sun(y, m, d, true, -0.833) > 12e4 ? 'Sun over the hill ' : 'Sunrise at the lodge ';
+    return [lab + when, rise, 'Light from ' + fmt(sun(y, m, d, true, -6))];
+  }
+  function fmt(d) {  // to the nearest minute, as sunrise tables print it
+    var t = new Date(d.getTime() + 3e4).toLocaleTimeString('en-GB', { timeZone: 'Europe/London', hour: 'numeric', minute: '2-digit', hour12: true });
     return t.replace(':', '.').replace(/\s/g, '').toLowerCase();
   }
-  try {
-    // "today" and "tomorrow" say the time is live: the user took a bare 4.46pm for a fixed time (27 Oct; it was
-    // that day's sunset, 4.46pm in the sunrisesunset.io table for Worthing)
-    var now = new Date(), set = sun(now, false), label = 'Sunset at the lodge today', t = set;
-    if (now > set) { t = sun(new Date(now.getTime() + 864e5), true); label = 'Sunrise at the lodge tomorrow'; }
-    box.querySelector('.sun-l').textContent = label;
-    box.querySelector('.sun-t').textContent = fmt(t);
-    box.hidden = false;
-  } catch (err) { /* leave it hidden */ }
+  // SUN-END
+  // "today" and "tomorrow" say the time is live: the user took a bare 4.46pm for a fixed time (27 Oct)
+  function paint() {
+    try {
+      var x = next(new Date());
+      box.querySelector('.sun-l').textContent = x[0];
+      box.querySelector('.sun-t').textContent = fmt(x[1]);
+      box.querySelector('.sun-n').textContent = x[2];
+      box.hidden = false;
+    } catch (err) { /* leave it as it was */ }
+  }
+  paint();
+  setInterval(paint, 6e4);  // a page left open past sunset moves on to the next sunrise
 })();
 // Photos (K0293, 26 Oct 2026). Pointing at an area in the list swaps the large photo beside it (The PIG's tabbed
 // lists); "All 26 photos" and "See all" open a photo tour, every photo by area in a full-screen sheet, instead of
